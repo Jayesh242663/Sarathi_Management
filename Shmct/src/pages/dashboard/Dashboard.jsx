@@ -42,18 +42,20 @@ const Dashboard = () => {
   const payments = getFilteredPayments();
 
   // Chart data
+
+  // Show revenue for the whole current year, one entry per month
   const monthlyRevenueData = useMemo(() => {
     const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
+    const now = new Date();
+    const year = now.getFullYear();
+    for (let m = 0; m < 12; m++) {
+      const date = new Date(year, m, 1);
       const monthName = date.toLocaleString('default', { month: 'short' });
-      const year = date.getFullYear();
-      const monthKey = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
+      const monthKey = `${year}-${String(m + 1).padStart(2, '0')}`;
+
       const monthPayments = payments.filter((p) => p.paymentDate.startsWith(monthKey));
       const total = monthPayments.reduce((sum, p) => sum + p.amount, 0);
-      
+
       months.push({
         name: monthName,
         revenue: total,
