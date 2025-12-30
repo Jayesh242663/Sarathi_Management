@@ -1,0 +1,82 @@
+/* ========================================
+   Main Layout - Modern Glassmorphism Style
+   ======================================== */
+
+/* ========================================
+   Layout Container
+   ======================================== */
+.main-layout {
+  height: 100vh;
+  max-height: 100vh;
+  background: #111111;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ========================================
+   Content Area
+   ======================================== */
+.main-layout-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* ========================================
+   Main Content
+   ======================================== */
+.main-layout-main {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: calc(100vh - 72px);
+}
+
+@media (min-width: 1024px) {
+  .main-layout-main {
+    padding: 1.5rem;
+  }
+}
+
+/* ========================================
+   Scrollbar Styles
+   ======================================== */
+.main-layout-main::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.main-layout-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-layout-main::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.main-layout-main::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ========================================
+   Animation Utilities
+   ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}

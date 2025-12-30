@@ -1,0 +1,1262 @@
+.placements-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.35s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================
+   Header Section
+   ======================================== */
+.placements-header {
+  margin-bottom: 1.5rem;
+}
+
+.placements-header-text h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.placements-header-text p {
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0.25rem 0 0 0;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 640px) {
+  .placements-header-chip {
+    align-self: auto;
+  }
+}
+
+/* ========================================
+   Stats Grid
+   ======================================== */
+.placements-stats {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .placements-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .placements-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  min-height: 90px;
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.stat-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.stat-icon.blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.stat-icon.green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.stat-icon.purple {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.stat-icon.orange {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+}
+
+.stat-icon.yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.stat-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.stat-label {
+  margin: 0 0 4px 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  width: 100%;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+  width: 100%;
+  word-break: break-word;
+}
+
+.stat-value.green {
+  color: #4ade80;
+}
+
+.stat-value.purple {
+  color: #a78bfa;
+}
+
+.stat-value.yellow {
+  color: #fbbf24;
+}
+
+.placements-table-card {
+  background: rgba(20, 20, 20, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.05);
+}
+
+.placements-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.placements-table th,
+.placements-table td {
+  padding: 12px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.placements-table thead th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.placements-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.text-right { text-align: right; }
+
+.student-cell {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.student-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.student-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.student-name {
+  margin: 0;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.student-email {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.country-chip {
+  display: inline-block;
+  padding: 6px 10px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #7dd3fc;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.company-name {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.number.profit {
+  color: #4ade80;
+}
+
+.installment-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.installment-toggle svg { width: 18px; height: 18px; transition: transform 0.2s ease; }
+.installment-toggle.open svg { transform: rotate(-180deg); }
+.installment-toggle:hover { background: rgba(255, 255, 255, 0.1); }
+
+.installment-count { font-weight: 600; font-size: 13px; }
+
+.installments-row td { padding: 0; background: rgba(0, 0, 0, 0.2); }
+
+.installments-card {
+  padding: 14px 16px;
+  background: rgba(15, 15, 15, 0.9);
+}
+
+.installments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.installments-header p {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.installments-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.installment-empty {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  grid-column: 1 / -1;
+}
+
+.installment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.installment-item.actionable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.installment-item.actionable:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+}
+
+.installment-item.actionable:active {
+  transform: translateY(0);
+}
+
+.installment-amount {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.installment-date {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.installment-remarks {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-style: italic;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  border-left: 2px solid rgba(99, 102, 241, 0.3);
+}
+
+.installment-method {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #c7d2fe;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.installment-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.installment-detail-card {
+  width: min(520px, 100%);
+  background: #0f0f0f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.installment-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.installment-detail-title {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.installment-detail-subtitle {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+}
+
+.installment-detail-close {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.installment-detail-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.installment-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.installment-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.installment-detail-row.full {
+  grid-column: 1 / -1;
+}
+
+.installment-detail-label {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.installment-detail-value {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  word-break: break-word;
+}
+
+.installment-detail-value.remarks {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.add-installment {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.add-installment:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.add-installment-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e0e7ff;
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.add-installment-header svg {
+  color: #22c55e;
+}
+
+.add-installment-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.form-label svg {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.add-installment input,
+.add-installment select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.add-installment input::placeholder,
+.add-installment select {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.add-installment textarea {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.add-installment textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.add-installment select.bank-select {
+  min-width: auto;
+}
+
+.add-installment input:hover,
+.add-installment select:hover,
+.add-installment textarea:hover {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.add-installment input:focus,
+.add-installment select:focus,
+.add-installment textarea:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+.add-installment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+}
+
+.add-installment-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
+}
+
+.add-installment-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+}
+
+.add-installment-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 28px 0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.empty-text {
+  margin: 0;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.empty-subtext {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .placements-page {
+    gap: 12px;
+  }
+
+  .placements-header {
+    flex-direction: column;
+  }
+
+  .placements-header h1 {
+    font-size: 20px;
+  }
+
+  .placements-header-chip {
+    align-self: flex-start;
+  }
+
+  .placements-stats {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .placements-table-card {
+    border-radius: 12px;
+  }
+
+  .placements-table th,
+  .placements-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .placements-table thead th {
+    font-size: 11px;
+  }
+
+  .student-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .student-name {
+    font-size: 14px;
+  }
+
+  .student-email {
+    font-size: 12px;
+  }
+
+  .installments-list {
+    grid-template-columns: 1fr;
+  }
+
+  .add-installment {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .add-installment-header {
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .add-installment-fields {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .form-label svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .add-installment input,
+  .add-installment select,
+  .add-installment textarea {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .add-installment-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Tablet devices (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .placements-page {
+    gap: 14px;
+  }
+
+  .placements-header h1 {
+    font-size: 22px;
+  }
+
+  .placements-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 11px;
+  }
+
+  .placements-table th,
+  .placements-table td {
+    padding: 11px 10px;
+    font-size: 13px;
+  }
+
+  .installments-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .add-installment {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .add-installment-fields {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Small mobile devices (max-width: 480px) */
+@media (max-width: 480px) {
+  .placements-page {
+    gap: 10px;
+  }
+
+  .placements-header h1 {
+    font-size: 18px;
+  }
+
+  .placements-header p {
+    font-size: 13px;
+  }
+
+  .placements-header-chip {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .placements-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .stat-value {
+    font-size: 16px;
+  }
+
+  .table-wrapper {
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+
+  .placements-table th,
+  .placements-table td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .placements-table thead th {
+    font-size: 10px;
+  }
+
+  .student-cell {
+    gap: 8px;
+  }
+
+  .student-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .student-name {
+    font-size: 13px;
+  }
+
+  .student-email {
+    display: none;
+  }
+
+  .installment-toggle {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .installment-count {
+    font-size: 12px;
+  }
+
+  .installments-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .installment-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .installment-method {
+    align-self: flex-start;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .add-installment {
+    padding: 10px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+
+  .add-installment-header {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .add-installment-header svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .add-installment-fields {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .form-group {
+    gap: 4px;
+  }
+
+  .form-label {
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .form-label svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .add-installment input,
+  .add-installment select,
+  .add-installment textarea {
+    padding: 8px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .add-installment-btn {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .add-installment-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Large desktop devices (min-width: 1400px) */
+@media (min-width: 1400px) {
+  .placements-page {
+    gap: 18px;
+  }
+
+  .placements-header h1 {
+    font-size: 28px;
+  }
+
+  .placements-stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .stat-label {
+    font-size: 15px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .placements-table th,
+  .placements-table td {
+    padding: 14px 14px;
+    font-size: 14px;
+  }
+
+  .installments-list {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .add-installment {
+    padding: 18px;
+    gap: 16px;
+  }
+
+  .add-installment-fields {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .add-installment-btn {
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+}
+/* ========================================
+   Editable Costs & Payment Status
+   ======================================== */
+.cost-input {
+  width: 100%;
+  max-width: 150px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.cost-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.placeholder-text {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
+.payment-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paid-amount {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.separator {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.remaining-amount {
+  font-weight: 600;
+}
+
+.remaining-amount.pending {
+  color: #fbbf24;
+}
+
+.remaining-amount.complete {
+  color: #4ade80;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-save,
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.btn-save {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.btn-save:hover {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.btn-cancel {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.btn-cancel:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-edit-costs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-costs:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ==========================================
+   MOBILE RESPONSIVE STYLES
+   ========================================== */
+@media (max-width: 768px) {
+  .placements-page {
+    padding: 0.75rem;
+    gap: 12px;
+  }
+
+  .placements-header-text h1 {
+    font-size: 1.5rem;
+  }
+
+  .placements-header-text p {
+    font-size: 0.875rem;
+  }
+
+  .placements-stats {
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    min-height: 80px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stat-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .stat-value {
+    font-size: 1.125rem;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+
+  /* Table becomes horizontally scrollable */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .placements-table {
+    min-width: 800px; /* Force horizontal scroll on mobile */
+  }
+
+  .placements-table th,
+  .placements-table td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+  }
+
+  .student-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+
+  .student-name {
+    font-size: 0.875rem;
+  }
+
+  .student-email {
+    font-size: 0.75rem;
+  }
+
+  .country-chip,
+  .installment-count {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  .installment-toggle {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+
+  .installment-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .installments-card {
+    padding: 12px;
+  }
+
+  .installment-item {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-edit-costs {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .placements-page {
+    padding: 0.5rem;
+  }
+
+  .placements-header-text h1 {
+    font-size: 1.25rem;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .placements-table {
+    min-width: 700px;
+  }
+
+  .placements-table th,
+  .placements-table td {
+    padding: 8px 6px;
+    font-size: 0.75rem;
+  }
+}

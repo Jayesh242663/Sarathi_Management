@@ -1,0 +1,941 @@
+{
+  "students": [
+    {
+      "id": "s2023001",
+      "enrollmentNumber": "SHMCT23001",
+      "firstName": "Aarav",
+      "lastName": "Mehta",
+      "email": "aarav.mehta@email.com",
+      "phone": "9876501001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-10",
+      "address": "45 Chandni Chowk, Old Delhi, Delhi 110006",
+      "guardianName": "Rajesh Mehta",
+      "guardianPhone": "9876501002",
+      "status": "active",
+      "totalFees": 150000,
+      "createdAt": "2023-07-10T09:00:00Z",
+      "updatedAt": "2023-07-10T09:00:00Z"
+    },
+    {
+      "id": "s2023002",
+      "enrollmentNumber": "SHMCT23002",
+      "firstName": "Ananya",
+      "lastName": "Reddy",
+      "email": "ananya.reddy@email.com",
+      "phone": "9876502001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-12",
+      "address": "78 Banjara Hills, Hyderabad, Telangana 500034",
+      "guardianName": "Venkat Reddy",
+      "guardianPhone": "9876502002",
+      "status": "active",
+      "totalFees": 150000,
+      "createdAt": "2023-07-12T10:30:00Z",
+      "updatedAt": "2023-07-12T10:30:00Z"
+    },
+    {
+      "id": "s2023003",
+      "enrollmentNumber": "SHMCT23003",
+      "firstName": "Vikram",
+      "lastName": "Singh",
+      "email": "vikram.singh@email.com",
+      "phone": "9876503001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-15",
+      "address": "22 Civil Lines, Jaipur, Rajasthan 302006",
+      "guardianName": "Pratap Singh",
+      "guardianPhone": "9876503002",
+      "status": "active",
+      "totalFees": 150000,
+      "createdAt": "2023-07-15T11:00:00Z",
+      "updatedAt": "2023-07-15T11:00:00Z"
+    },
+    {
+      "id": "s2023004",
+      "enrollmentNumber": "SHMCT23004",
+      "firstName": "Sneha",
+      "lastName": "Deshmukh",
+      "email": "sneha.deshmukh@email.com",
+      "phone": "9876504001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-18",
+      "address": "156 FC Road, Pune, Maharashtra 411004",
+      "guardianName": "Anil Deshmukh",
+      "guardianPhone": "9876504002",
+      "status": "active",
+      "totalFees": 150000,
+      "createdAt": "2023-07-18T09:30:00Z",
+      "updatedAt": "2023-07-18T09:30:00Z"
+    },
+    {
+      "id": "s2023005",
+      "enrollmentNumber": "SHMCT23005",
+      "firstName": "Rohan",
+      "lastName": "Kapoor",
+      "email": "rohan.kapoor@email.com",
+      "phone": "9876505001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-20",
+      "address": "89 MG Road, Bangalore, Karnataka 560001",
+      "guardianName": "Arun Kapoor",
+      "guardianPhone": "9876505002",
+      "status": "graduated",
+      "totalFees": 150000,
+      "createdAt": "2023-07-20T10:00:00Z",
+      "updatedAt": "2024-06-30T15:00:00Z"
+    },
+    {
+      "id": "s2023006",
+      "enrollmentNumber": "SHMCT23006",
+      "firstName": "Kavya",
+      "lastName": "Nair",
+      "email": "kavya.nair@email.com",
+      "phone": "9876506001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-22",
+      "address": "34 Marine Drive, Kochi, Kerala 682001",
+      "guardianName": "Suresh Nair",
+      "guardianPhone": "9876506002",
+      "status": "active",
+      "totalFees": 150000,
+      "createdAt": "2023-07-22T11:30:00Z",
+      "updatedAt": "2023-07-22T11:30:00Z"
+    },
+    {
+      "id": "s2023007",
+      "enrollmentNumber": "SHMCT23007",
+      "firstName": "Arjun",
+      "lastName": "Verma",
+      "email": "arjun.verma@email.com",
+      "phone": "9876507001",
+      "course": "diploma_hotel_management",
+      "batch": "2023-24",
+      "admissionDate": "2023-07-25",
+      "address": "67 Hazratganj, Lucknow, Uttar Pradesh 226001",
+      "guardianName": "Manoj Verma",
+      "guardianPhone": "9876507002",
+      "status": "on_leave",
+      "totalFees": 150000,
+      "createdAt": "2023-07-25T09:00:00Z",
+      "updatedAt": "2024-09-01T10:00:00Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay2023001",
+      "studentId": "s2023001",
+      "amount": 50000,
+      "paymentDate": "2023-07-10",
+      "paymentMethod": "bank_transfer",
+      "bankMoneyReceived": "hdfc_1_shmt",
+      "receiptNumber": "REC-2023-001",
+      "remarks": "First installment - Admission fee",
+      "createdAt": "2023-07-10T09:30:00Z"
+    },
+    {
+      "id": "pay2023002",
+      "studentId": "s2023001",
+      "amount": 50000,
+      "paymentDate": "2023-10-15",
+      "paymentMethod": "upi",
+      "bankMoneyReceived": "hdfc_sss",
+      "receiptNumber": "REC-2023-002",
+      "remarks": "Second installment",
+      "createdAt": "2023-10-15T10:00:00Z"
+    },
+    {
+      "id": "pay2023003",
+      "studentId": "s2023001",
+      "amount": 50000,
+      "paymentDate": "2024-01-10",
+      "paymentMethod": "card",
+      "receiptNumber": "REC-2024-001",
+      "remarks": "Final installment - Fees complete",
+      "createdAt": "2024-01-10T11:00:00Z"
+    },
+    {
+      "id": "pay2023004",
+      "studentId": "s2023002",
+      "amount": 75000,
+      "paymentDate": "2023-07-12",
+      "paymentMethod": "bank_transfer",
+      "receiptNumber": "REC-2023-003",
+      "remarks": "First installment - Admission",
+      "createdAt": "2023-07-12T11:00:00Z"
+    },
+    {
+      "id": "pay2023005",
+      "studentId": "s2023002",
+      "amount": 75000,
+      "paymentDate": "2023-11-20",
+      "paymentMethod": "cheque",
+      "receiptNumber": "REC-2023-004",
+      "remarks": "Second installment",
+      "createdAt": "2023-11-20T14:00:00Z"
+    },
+    {
+      "id": "pay2023006",
+      "studentId": "s2023002",
+      "amount": 50000,
+      "paymentDate": "2024-03-15",
+      "paymentMethod": "upi",
+      "receiptNumber": "REC-2024-002",
+      "remarks": "Third installment - Partial",
+      "createdAt": "2024-03-15T09:30:00Z"
+    },
+    {
+      "id": "pay2023007",
+      "studentId": "s2023003",
+      "amount": 100000,
+      "paymentDate": "2023-07-15",
+      "paymentMethod": "bank_transfer",
+      "receiptNumber": "REC-2023-005",
+      "remarks": "First installment - MBA Admission",
+      "createdAt": "2023-07-15T11:30:00Z"
+    },
+    {
+      "id": "pay2023008",
+      "studentId": "s2023003",
+      "amount": 100000,
+      "paymentDate": "2023-12-01",
+      "paymentMethod": "bank_transfer",
+      "receiptNumber": "REC-2023-006",
+      "remarks": "Second installment",
+      "createdAt": "2023-12-01T10:00:00Z"
+    },
+    {
+      "id": "pay2023009",
+      "studentId": "s2023003",
+      "amount": 100000,
+      "paymentDate": "2024-04-10",
+      "paymentMethod": "card",
+      "receiptNumber": "REC-2024-003",
+      "remarks": "Final installment - Fees complete",
+      "createdAt": "2024-04-10T15:00:00Z"
+    },
+    {
+      "id": "pay2023010",
+      "studentId": "s2023004",
+      "amount": 40000,
+      "paymentDate": "2023-07-18",
+      "paymentMethod": "cash",
+      "receiptNumber": "REC-2023-007",
+      "remarks": "First installment - Certificate course",
+      "createdAt": "2023-07-18T10:00:00Z"
+    },
+    {
+      "id": "pay2023011",
+      "studentId": "s2023004",
+      "amount": 40000,
+      "paymentDate": "2023-11-25",
+      "paymentMethod": "upi",
+      "receiptNumber": "REC-2023-008",
+      "remarks": "Final installment - Fees complete",
+      "createdAt": "2023-11-25T11:30:00Z"
+    },
+    {
+      "id": "pay2023012",
+      "studentId": "s2023005",
+      "amount": 35000,
+      "paymentDate": "2023-07-20",
+      "paymentMethod": "bank_transfer",
+      "receiptNumber": "REC-2023-009",
+      "remarks": "First installment",
+      "createdAt": "2023-07-20T10:30:00Z"
+    },
+    {
+      "id": "pay2023013",
+      "studentId": "s2023005",
+      "amount": 40000,
+      "paymentDate": "2023-12-10",
+      "paymentMethod": "upi",
+      "receiptNumber": "REC-2023-010",
+      "remarks": "Final installment - Fees complete",
+      "createdAt": "2023-12-10T14:00:00Z"
+    },
+    {
+      "id": "pay2023014",
+      "studentId": "s2023006",
+      "amount": 35000,
+      "paymentDate": "2023-07-22",
+      "paymentMethod": "cash",
+      "receiptNumber": "REC-2023-011",
+      "remarks": "First installment - Admission",
+      "createdAt": "2023-07-22T12:00:00Z"
+    },
+    {
+      "id": "pay2023015",
+      "studentId": "s2023006",
+      "amount": 20000,
+      "paymentDate": "2024-01-05",
+      "paymentMethod": "upi",
+      "receiptNumber": "REC-2024-004",
+      "remarks": "Second installment - Partial",
+      "createdAt": "2024-01-05T09:00:00Z"
+    },
+    {
+      "id": "pay2023016",
+      "studentId": "s2023007",
+      "amount": 50000,
+      "paymentDate": "2023-07-25",
+      "paymentMethod": "bank_transfer",
+      "receiptNumber": "REC-2023-012",
+      "remarks": "First installment - Admission",
+      "createdAt": "2023-07-25T09:30:00Z"
+    },
+    {
+      "id": "pay2023017",
+      "studentId": "s2023007",
+      "amount": 50000,
+      "paymentDate": "2023-11-01",
+      "paymentMethod": "cheque",
+      "receiptNumber": "REC-2023-013",
+      "remarks": "Second installment",
+      "createdAt": "2023-11-01T11:00:00Z"
+    }
+  ],
+  "auditLog": [
+    {
+      "id": "audit001",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023001",
+      "entityName": "Aarav Mehta",
+      "details": {
+        "enrollmentNumber": "SHMCT23001",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-10T09:00:00Z"
+    },
+    {
+      "id": "audit002",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023001",
+      "entityName": "Aarav Mehta",
+      "details": {
+        "studentId": "s2023001",
+        "amount": 50000,
+        "paymentMethod": "bank_transfer",
+        "receiptNumber": "REC-2023-001",
+        "paymentDate": "2023-07-10",
+        "remarks": "First installment - Admission fee"
+      },
+      "timestamp": "2023-07-10T09:30:00Z"
+    },
+    {
+      "id": "audit003",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023002",
+      "entityName": "Ananya Reddy",
+      "details": {
+        "enrollmentNumber": "SHMCT23002",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-12T10:30:00Z"
+    },
+    {
+      "id": "audit004",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023004",
+      "entityName": "Ananya Reddy",
+      "details": {
+        "studentId": "s2023002",
+        "amount": 75000,
+        "paymentMethod": "bank_transfer",
+        "receiptNumber": "REC-2023-003",
+        "paymentDate": "2023-07-12",
+        "remarks": "First installment - Admission"
+      },
+      "timestamp": "2023-07-12T11:00:00Z"
+    },
+    {
+      "id": "audit005",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023003",
+      "entityName": "Vikram Singh",
+      "details": {
+        "enrollmentNumber": "SHMCT23003",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-15T11:00:00Z"
+    },
+    {
+      "id": "audit006",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023007",
+      "entityName": "Vikram Singh",
+      "details": {
+        "studentId": "s2023003",
+        "amount": 100000,
+        "paymentMethod": "bank_transfer",
+        "receiptNumber": "REC-2023-005",
+        "paymentDate": "2023-07-15",
+        "remarks": "First installment - MBA Admission"
+      },
+      "timestamp": "2023-07-15T11:30:00Z"
+    },
+    {
+      "id": "audit007",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023004",
+      "entityName": "Sneha Deshmukh",
+      "details": {
+        "enrollmentNumber": "SHMCT23004",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-18T09:30:00Z"
+    },
+    {
+      "id": "audit008",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023010",
+      "entityName": "Sneha Deshmukh",
+      "details": {
+        "studentId": "s2023004",
+        "amount": 40000,
+        "paymentMethod": "cash",
+        "receiptNumber": "REC-2023-007",
+        "paymentDate": "2023-07-18",
+        "remarks": "First installment - Certificate course"
+      },
+      "timestamp": "2023-07-18T10:00:00Z"
+    },
+    {
+      "id": "audit009",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023005",
+      "entityName": "Rohan Kapoor",
+      "details": {
+        "enrollmentNumber": "SHMCT23005",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-20T10:00:00Z"
+    },
+    {
+      "id": "audit010",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023012",
+      "entityName": "Rohan Kapoor",
+      "details": {
+        "studentId": "s2023005",
+        "amount": 35000,
+        "paymentMethod": "bank_transfer",
+        "receiptNumber": "REC-2023-009",
+        "paymentDate": "2023-07-20",
+        "remarks": "First installment"
+      },
+      "timestamp": "2023-07-20T10:30:00Z"
+    },
+    {
+      "id": "audit011",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023006",
+      "entityName": "Kavya Nair",
+      "details": {
+        "enrollmentNumber": "SHMCT23006",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-22T11:30:00Z"
+    },
+    {
+      "id": "audit012",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023014",
+      "entityName": "Kavya Nair",
+      "details": {
+        "studentId": "s2023006",
+        "amount": 35000,
+        "paymentMethod": "cash",
+        "receiptNumber": "REC-2023-011",
+        "paymentDate": "2023-07-22",
+        "remarks": "First installment - Admission"
+      },
+      "timestamp": "2023-07-22T12:00:00Z"
+    },
+    {
+      "id": "audit013",
+      "action": "CREATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023007",
+      "entityName": "Arjun Verma",
+      "details": {
+        "enrollmentNumber": "SHMCT23007",
+        "course": "diploma_hotel_management",
+        "batch": "2023-24",
+        "totalFees": 150000
+      },
+      "timestamp": "2023-07-25T09:00:00Z"
+    },
+    {
+      "id": "audit014",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023016",
+      "entityName": "Arjun Verma",
+      "details": {
+        "studentId": "s2023007",
+        "amount": 50000,
+        "paymentMethod": "bank_transfer",
+        "receiptNumber": "REC-2023-012",
+        "paymentDate": "2023-07-25",
+        "remarks": "First installment - Admission"
+      },
+      "timestamp": "2023-07-25T09:30:00Z"
+    },
+    {
+      "id": "audit015",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023002",
+      "entityName": "Aarav Mehta",
+      "details": {
+        "studentId": "s2023001",
+        "amount": 50000,
+        "paymentMethod": "upi",
+        "receiptNumber": "REC-2023-002",
+        "paymentDate": "2023-10-15",
+        "remarks": "Second installment"
+      },
+      "timestamp": "2023-10-15T10:00:00Z"
+    },
+    {
+      "id": "audit016",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023017",
+      "entityName": "Arjun Verma",
+      "details": {
+        "studentId": "s2023007",
+        "amount": 50000,
+        "paymentMethod": "cheque",
+        "receiptNumber": "REC-2023-013",
+        "paymentDate": "2023-11-01",
+        "remarks": "Second installment"
+      },
+      "timestamp": "2023-11-01T11:00:00Z"
+    },
+    {
+      "id": "audit017",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023005",
+      "entityName": "Ananya Reddy",
+      "details": {
+        "studentId": "s2023002",
+        "amount": 75000,
+        "paymentMethod": "cheque",
+        "receiptNumber": "REC-2023-004",
+        "paymentDate": "2023-11-20",
+        "remarks": "Second installment"
+      },
+      "timestamp": "2023-11-20T14:00:00Z"
+    },
+    {
+      "id": "audit018",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023011",
+      "entityName": "Sneha Deshmukh",
+      "details": {
+        "studentId": "s2023004",
+        "amount": 40000,
+        "paymentMethod": "upi",
+        "receiptNumber": "REC-2023-008",
+        "paymentDate": "2023-11-25",
+        "remarks": "Final installment - Fees complete"
+      },
+      "timestamp": "2023-11-25T11:30:00Z"
+    },
+    {
+      "id": "audit019",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023008",
+      "entityName": "Vikram Singh",
+      "details": {
+        "studentId": "s2023003",
+        "amount": 100000,
+        "paymentMethod": "bank_transfer",
+        "receiptNumber": "REC-2023-006",
+        "paymentDate": "2023-12-01",
+        "remarks": "Second installment"
+      },
+      "timestamp": "2023-12-01T10:00:00Z"
+    },
+    {
+      "id": "audit020",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023013",
+      "entityName": "Rohan Kapoor",
+      "details": {
+        "studentId": "s2023005",
+        "amount": 40000,
+        "paymentMethod": "upi",
+        "receiptNumber": "REC-2023-010",
+        "paymentDate": "2023-12-10",
+        "remarks": "Final installment - Fees complete"
+      },
+      "timestamp": "2023-12-10T14:00:00Z"
+    },
+    {
+      "id": "audit021",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023015",
+      "entityName": "Kavya Nair",
+      "details": {
+        "studentId": "s2023006",
+        "amount": 20000,
+        "paymentMethod": "upi",
+        "receiptNumber": "REC-2024-004",
+        "paymentDate": "2024-01-05",
+        "remarks": "Second installment - Partial"
+      },
+      "timestamp": "2024-01-05T09:00:00Z"
+    },
+    {
+      "id": "audit022",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023003",
+      "entityName": "Aarav Mehta",
+      "details": {
+        "studentId": "s2023001",
+        "amount": 50000,
+        "paymentMethod": "card",
+        "receiptNumber": "REC-2024-001",
+        "paymentDate": "2024-01-10",
+        "remarks": "Final installment - Fees complete"
+      },
+      "timestamp": "2024-01-10T11:00:00Z"
+    },
+    {
+      "id": "audit023",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023006",
+      "entityName": "Ananya Reddy",
+      "details": {
+        "studentId": "s2023002",
+        "amount": 50000,
+        "paymentMethod": "upi",
+        "receiptNumber": "REC-2024-002",
+        "paymentDate": "2024-03-15",
+        "remarks": "Third installment - Partial"
+      },
+      "timestamp": "2024-03-15T09:30:00Z"
+    },
+    {
+      "id": "audit024",
+      "action": "PAYMENT",
+      "entityType": "PAYMENT",
+      "entityId": "pay2023009",
+      "entityName": "Vikram Singh",
+      "details": {
+        "studentId": "s2023003",
+        "amount": 100000,
+        "paymentMethod": "card",
+        "receiptNumber": "REC-2024-003",
+        "paymentDate": "2024-04-10",
+        "remarks": "Final installment - Fees complete"
+      },
+      "timestamp": "2024-04-10T15:00:00Z"
+    },
+    {
+      "id": "audit025",
+      "action": "UPDATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023005",
+      "entityName": "Rohan Kapoor",
+      "details": {
+        "updatedFields": ["status"],
+        "status": "graduated"
+      },
+      "timestamp": "2024-06-30T15:00:00Z"
+    },
+    {
+      "id": "audit026",
+      "action": "UPDATE",
+      "entityType": "STUDENT",
+      "entityId": "s2023007",
+      "entityName": "Arjun Verma",
+      "details": {
+        "updatedFields": ["status"],
+        "status": "on_leave"
+      },
+      "timestamp": "2024-09-01T10:00:00Z"
+    },
+    {
+      "id": "audit027",
+      "action": "SCHOLARSHIP",
+      "entityType": "SCHOLARSHIP",
+      "entityId": "sch2023001",
+      "entityName": "Ananya Reddy",
+      "details": {
+        "studentId": "s2023002",
+        "amount": 40000,
+        "scholarshipName": "Merit Scholarship - Academic Excellence",
+        "percentage": 20,
+        "voucherNumber": "SCH-2023-001",
+        "remarks": "Awarded for outstanding academic performance in first semester"
+      },
+      "timestamp": "2023-12-15T11:00:00Z"
+    },
+    {
+      "id": "audit028",
+      "action": "REFUND",
+      "entityType": "REFUND",
+      "entityId": "ref2024001",
+      "entityName": "Priya Sharma",
+      "details": {
+        "studentId": "s2024001",
+        "amount": 15000,
+        "refundMethod": "bank_transfer",
+        "voucherNumber": "REF-2024-001",
+        "reason": "Course withdrawal - Admission cancelled within 30 days",
+        "originalReceiptNumber": "REC-2024-005"
+      },
+      "timestamp": "2024-01-20T14:30:00Z"
+    },
+    {
+      "id": "audit029",
+      "action": "DISCOUNT",
+      "entityType": "DISCOUNT",
+      "entityId": "dis2023001",
+      "entityName": "Aarav Mehta",
+      "details": {
+        "studentId": "s2023001",
+        "amount": 7500,
+        "discountType": "Early Payment Discount",
+        "percentage": 5,
+        "voucherNumber": "DIS-2023-001",
+        "reason": "Full fee payment in advance - 5% discount as per policy"
+      },
+      "timestamp": "2023-07-10T10:00:00Z"
+    },
+    {
+      "id": "audit030",
+      "action": "SCHOLARSHIP",
+      "entityType": "SCHOLARSHIP",
+      "entityId": "sch2024001",
+      "entityName": "Vikram Singh",
+      "details": {
+        "studentId": "s2023003",
+        "amount": 60000,
+        "scholarshipName": "Sports Quota Scholarship",
+        "percentage": 20,
+        "voucherNumber": "SCH-2024-001",
+        "remarks": "State level sports achievement - Hospitality management program"
+      },
+      "timestamp": "2024-02-10T09:00:00Z"
+    },
+    {
+      "id": "audit031",
+      "action": "ADJUSTMENT",
+      "entityType": "ADJUSTMENT",
+      "entityId": "adj2024001",
+      "entityName": "Kavya Nair",
+      "details": {
+        "studentId": "s2023006",
+        "amount": 5000,
+        "voucherNumber": "ADJ-2024-001",
+        "reason": "Fee correction - Duplicate payment adjustment for receipt REC-2024-004"
+      },
+      "timestamp": "2024-01-15T16:00:00Z"
+    },
+    {
+      "id": "audit032",
+      "action": "DISCOUNT",
+      "entityType": "DISCOUNT",
+      "entityId": "dis2024001",
+      "entityName": "Sneha Deshmukh",
+      "details": {
+        "studentId": "s2023004",
+        "amount": 8000,
+        "discountType": "Sibling Concession",
+        "percentage": 10,
+        "voucherNumber": "DIS-2024-001",
+        "reason": "Second sibling in same institution - 10% fee waiver"
+      },
+      "timestamp": "2024-01-25T10:30:00Z"
+    },
+    {
+      "id": "audit033",
+      "action": "REFUND",
+      "entityType": "REFUND",
+      "entityId": "ref2024002",
+      "entityName": "Rahul Gupta",
+      "details": {
+        "studentId": "s2024002",
+        "amount": 25000,
+        "refundMethod": "cheque",
+        "voucherNumber": "REF-2024-002",
+        "reason": "Medical grounds - Student unable to continue course",
+        "originalReceiptNumber": "REC-2024-006"
+      },
+      "timestamp": "2024-03-05T11:45:00Z"
+    },
+    {
+      "id": "audit034",
+      "action": "SCHOLARSHIP",
+      "entityType": "SCHOLARSHIP",
+      "entityId": "sch2024002",
+      "entityName": "Rohan Kapoor",
+      "details": {
+        "studentId": "s2023005",
+        "amount": 15000,
+        "scholarshipName": "Financial Aid - Economically Weaker Section",
+        "percentage": 20,
+        "voucherNumber": "SCH-2024-002",
+        "remarks": "Income certificate verified - EWS category benefit"
+      },
+      "timestamp": "2024-04-01T09:30:00Z"
+    },
+    {
+      "id": "audit035",
+      "action": "ADJUSTMENT",
+      "entityType": "ADJUSTMENT",
+      "entityId": "adj2024002",
+      "entityName": "Arjun Verma",
+      "details": {
+        "studentId": "s2023007",
+        "amount": 3000,
+        "voucherNumber": "ADJ-2024-002",
+        "reason": "Late fee waiver - Administrative approval due to genuine hardship"
+      },
+      "timestamp": "2024-05-15T14:00:00Z"
+    },
+    {
+      "id": "audit036",
+      "action": "DISCOUNT",
+      "entityType": "DISCOUNT",
+      "entityId": "dis2024002",
+      "entityName": "Ananya Reddy",
+      "details": {
+        "studentId": "s2023002",
+        "amount": 10000,
+        "discountType": "Alumni Referral Discount",
+        "percentage": 5,
+        "voucherNumber": "DIS-2024-002",
+        "reason": "Referred by alumni member - Special referral discount"
+      },
+      "timestamp": "2024-06-10T10:00:00Z"
+    }
+  ],
+  "placements": [
+    {
+      "id": "pl2024001",
+      "studentId": "s2023001",
+      "batch": "2023-24",
+      "company": "Marriott International",
+      "country": "United Arab Emirates",
+      "companyCosting": 320000,
+      "myCosting": 375000,
+      "profit": 55000,
+      "placementDate": "2024-08-10",
+      "installments": [
+        { "id": "plpay-001a", "amount": 150000, "date": "2024-06-15", "method": "bank_transfer" },
+        { "id": "plpay-001b", "amount": 125000, "date": "2024-07-20", "method": "upi" },
+        { "id": "plpay-001c", "amount": 50000, "date": "2024-08-01", "method": "cash" },
+        { "id": "plpay-001d", "amount": 50000, "date": "2024-08-05", "method": "card" }
+      ]
+    },
+    {
+      "id": "pl2024002",
+      "studentId": "s2023002",
+      "batch": "2023-24",
+      "company": "Hilton Mumbai",
+      "country": "India",
+      "companyCosting": 290000,
+      "myCosting": 340000,
+      "profit": 50000,
+      "placementDate": "2024-09-02",
+      "installments": [
+        { "id": "plpay-002a", "amount": 120000, "date": "2024-07-01", "method": "bank_transfer" },
+        { "id": "plpay-002b", "amount": 80000, "date": "2024-07-25", "method": "upi" },
+        { "id": "plpay-002c", "amount": 90000, "date": "2024-08-10", "method": "cheque" },
+        { "id": "plpay-002d", "amount": 50000, "date": "2024-08-28", "method": "card" }
+      ]
+    },
+    {
+      "id": "pl2024003",
+      "studentId": "s2023003",
+      "batch": "2023-24",
+      "company": "Accor Paris",
+      "country": "France",
+      "companyCosting": 450000,
+      "myCosting": 520000,
+      "profit": 70000,
+      "placementDate": "2024-10-01",
+      "installments": [
+        { "id": "plpay-003a", "amount": 220000, "date": "2024-08-05", "method": "bank_transfer" },
+        { "id": "plpay-003b", "amount": 160000, "date": "2024-08-25", "method": "card" },
+        { "id": "plpay-003c", "amount": 140000, "date": "2024-09-18", "method": "upi" }
+      ]
+    },
+    {
+      "id": "pl2024004",
+      "studentId": "s2023004",
+      "batch": "2023-24",
+      "company": "Taj Hotels",
+      "country": "India",
+      "companyCosting": 210000,
+      "myCosting": 260000,
+      "profit": 50000,
+      "placementDate": "2024-07-25",
+      "installments": [
+        { "id": "plpay-004a", "amount": 90000, "date": "2024-06-30", "method": "cash" },
+        { "id": "plpay-004b", "amount": 80000, "date": "2024-07-10", "method": "upi" },
+        { "id": "plpay-004c", "amount": 90000, "date": "2024-07-20", "method": "bank_transfer" }
+      ]
+    },
+    {
+      "id": "pl2024005",
+      "studentId": "s2023005",
+      "batch": "2023-24",
+      "company": "Hyatt Singapore",
+      "country": "Singapore",
+      "companyCosting": 360000,
+      "myCosting": 430000,
+      "profit": 70000,
+      "placementDate": "2024-11-15",
+      "installments": [
+        { "id": "plpay-005a", "amount": 150000, "date": "2024-09-01", "method": "bank_transfer" },
+        { "id": "plpay-005b", "amount": 140000, "date": "2024-09-20", "method": "cheque" },
+        { "id": "plpay-005c", "amount": 90000, "date": "2024-10-05", "method": "upi" },
+        { "id": "plpay-005d", "amount": 50000, "date": "2024-11-01", "method": "card" }
+      ]
+    }
+  ]
+}

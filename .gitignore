@@ -1,0 +1,55 @@
+# Root .gitignore for repo-wide ignores
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node.js dependencies (all subprojects)
+node_modules/
+**/node_modules/
+
+# Build outputs
+build/
+dist/
+dist-ssr/
+**/build/
+**/dist/
+
+# Coverage
+coverage/
+**/coverage/
+.nyc_output/
+
+# Caches
+.cache/
+**/.cache/
+.vite/
+**/.vite/
+.eslintcache
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor settings
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Misc
+*.tsbuildinfo
+*.sql

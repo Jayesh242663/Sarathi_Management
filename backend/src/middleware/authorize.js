@@ -1,0 +1,153 @@
+import supabase from '../config/supabase.js';
+
+const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || 'jayeshchanne9@gmail.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+const isSuperAdminEmail = (email = '') => SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+
+/**
+ * Middleware to check user role from user_profiles table
+ * Adds user role to req.user object
+ */
+export const attachUserRole = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Allow configured super admin emails to bypass lookup and enforce administrator role
+    if (req.user.email && isSuperAdminEmail(req.user.email)) {
+      req.user.role = 'administrator';
+      req.user.fullName = req.user.user_metadata?.name || req.user.email;
+
+      // Ensure a profile row exists for consistency
+      try {
+        await supabase
+          .from('user_profiles')
+          .upsert({
+            id: req.user.id,
+            full_name: req.user.fullName,
+            role: 'administrator',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+      } catch (upsertError) {
+        console.error('Error ensuring super admin profile:', upsertError);
+      }
+
+      return next();
+    }
+
+    // Fetch user profile with role
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('role, full_name')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return res.status(500).json({ error: 'Failed to fetch user profile' });
+    }
+
+    if (!profile) {
+      return res.status(404).json({ error: 'User profile not found' });
+    }
+
+    // Attach role and profile info to req.user
+    req.user.role = profile.role;
+    req.user.fullName = profile.full_name;
+
+    next();
+  } catch (error) {
+    console.error('Error in attachUserRole middleware:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Middleware to check if user has administrator role
+ */
+export const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.role) {
+    return res.status(401).json({ error: 'User not authenticated' });
+  }
+
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ 
+      error: 'Access denied. Administrator privileges required.' 
+    });
+  }
+
+  next();
+};
+
+/**
+ * Middleware to check if user has either administrator or auditor role
+ */
+export const requireAuditorOrAdmin = (req, res, next) => {
+  if (!req.user || !req.user.role) {
+    return res.status(401).json({ error: 'User not authenticated' });
+  }
+
+  if (req.user.role !== 'administrator' && req.user.role !== 'auditor') {
+    return res.status(403).json({ 
+      error: 'Access denied. Insufficient privileges.' 
+    });
+  }
+
+  next();
+};
+
+/**
+ * Middleware to restrict write operations (POST, PUT, PATCH, DELETE) to administrators only
+ * Allows GET requests for all authenticated users
+ */
+export const restrictWriteToAdmin = (req, res, next) => {
+  const writeOperations = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  
+  // If it's a write operation, require admin role
+  if (writeOperations.includes(req.method)) {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    if (req.user.role !== 'administrator') {
+      return res.status(403).json({ 
+        error: 'Access denied. Only administrators can perform this action.' 
+      });
+    }
+  }
+
+  next();
+};
+
+/**
+ * Create a middleware that requires specific roles
+ * @param {string[]} roles - Array of allowed roles
+ */
+export const requireRoles = (roles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        error: `Access denied. Required roles: ${roles.join(', ')}` 
+      });
+    }
+
+    next();
+  };
+};
+
+export default {
+  attachUserRole,
+  requireAdmin,
+  requireAuditorOrAdmin,
+  restrictWriteToAdmin,
+  requireRoles
+};
