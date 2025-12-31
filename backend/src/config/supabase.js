@@ -28,6 +28,9 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+// Export the decoded role for debug checks elsewhere
+export { serviceKeyRole };
+
 export function requireSupabase() {
   if (!supabase) {
     const err = new Error(

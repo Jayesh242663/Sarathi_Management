@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireSupabase } from '../config/supabase.js';
+import { requireSupabase, serviceKeyRole } from '../config/supabase.js';
 import supabase from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, requireAdmin } from '../middleware/authorize.js';
@@ -18,34 +18,44 @@ const router = Router();
  * Helper function to get user profile with role
  */
 async function getUserProfile(userId) {
-  const { data: profile, error } = await supabase
-    .from('user_profiles')
-    .select('role, full_name')
-    .eq('id', userId)
-    .single();
+  try {
+    const sb = requireSupabase();
+    const { data: profile, error } = await sb
+      .from('user_profiles')
+      .select('role, full_name')
+      .eq('id', userId)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Error fetching user profile:', error);
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+
+    return profile || null;
+  } catch (err) {
+    console.error('Error fetching user profile:', err);
     return null;
   }
-
-  return profile;
 }
 /**
  * Helper function to create or update user profile
  */
 async function ensureUserProfile(userId, email, fullName = '', role = 'auditor') {
   try {
-    // Try to insert or update
-    const { data, error } = await supabase
+    // Use the service-role client to perform upsert so RLS does not block writes
+    const sb = requireSupabase();
+    const { data, error } = await sb
       .from('user_profiles')
-      .upsert({
-        id: userId,
-        full_name: fullName || email.split('@')[0],
-        role,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' })
+      .upsert(
+        {
+          id: userId,
+          full_name: fullName || email.split('@')[0],
+          role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      )
       .select();
 
     if (error) {
@@ -95,6 +105,7 @@ router.post('/login', async (req, res, next) => {
 
     // Auto-promote configured super admin emails
     if (isSuperAdminEmail(email)) {
+      console.log('[auth] serviceKeyRole during login:', serviceKeyRole);
       const ensuredProfile = await ensureUserProfile(
         data.user.id,
         email,
@@ -525,7 +536,7 @@ router.post('/users', authenticateToken, attachUserRole, requireAdmin, async (re
       // Fallback: explicitly update role if upsert didn't persist it
       try {
         if (!profile || profile.role !== normalizedRole) {
-          const { data: updated, error: updateError } = await supabase
+          const { data: updated, error: updateError } = await sb
             .from('user_profiles')
             .update({
               role: normalizedRole,

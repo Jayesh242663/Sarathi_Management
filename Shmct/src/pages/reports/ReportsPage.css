@@ -240,13 +240,29 @@
   color: #ffffff;
   margin: 0 0 1rem 0;
 }
-.reports-chart-container > div,
-.reports-chart-container svg {
+
+/* Chart container: height driven by CSS variable for responsive control */
+.reports-chart-container {
+  --chart-height: 280px; /* default */
+  width: 100%;
+  height: var(--chart-height);
+  min-height: 200px;
+  min-width: 0; /* allow proper flex/grid shrinking */
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Ensure Recharts wrapper fills the chart container */
+.reports-chart-container > .recharts-wrapper {
   width: 100% !important;
   height: 100% !important;
-  max-width: 100%;
-  max-height: 100%;
   box-sizing: border-box;
+  display: block;
+}
+
+.reports-chart-container > div {
+  width: 100%;
+  height: 100%;
 }
 
 /* Optional: Utility class for fixed chart height if needed */
@@ -537,15 +553,15 @@
   }
 
   .reports-chart-container {
-    height: 280px;
-    min-height: 280px;
+    --chart-height: 280px;
+    height: var(--chart-height);
+    min-height: 200px;
     min-width: 0; /* allow flex/grid items to shrink properly */
     box-sizing: border-box;
   }
 
   .reports-chart-container.small {
-     height: 240px;
-     min-height: 240px;
+     --chart-height: 240px;
   }
 
   /* Ensure recharts wrapper fills the chart container */
@@ -590,10 +606,9 @@
     font-size: 0.85rem;
   }
 
-  .reports-chart-container {
-     height: 200px;
-     min-height: 200px;
-  }
+    .reports-chart-container {
+      --chart-height: 200px;
+    }
 
   .reports-stat-content {
     flex-direction: column;

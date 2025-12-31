@@ -1,4 +1,4 @@
-import supabase from '../config/supabase.js';
+import supabase, { requireSupabase } from '../config/supabase.js';
 
 const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || 'jayeshchanne9@gmail.com')
   .split(',')
@@ -24,7 +24,8 @@ export const attachUserRole = async (req, res, next) => {
 
       // Ensure a profile row exists for consistency
       try {
-        await supabase
+        const sb = requireSupabase();
+        await sb
           .from('user_profiles')
           .upsert({
             id: req.user.id,
@@ -41,26 +42,33 @@ export const attachUserRole = async (req, res, next) => {
     }
 
     // Fetch user profile with role
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .select('role, full_name')
-      .eq('id', req.user.id)
-      .single();
+    try {
+      const sb = requireSupabase();
+      const { data: profile, error } = await sb
+        .from('user_profiles')
+        .select('role, full_name')
+        .eq('id', req.user.id)
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching user profile:', error);
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return res.status(500).json({ error: 'Failed to fetch user profile' });
+      }
+
+      if (!profile) {
+        return res.status(404).json({ error: 'User profile not found' });
+      }
+
+      // Attach role and profile info to req.user
+      req.user.role = profile.role;
+      req.user.fullName = profile.full_name;
+
+      return next();
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
       return res.status(500).json({ error: 'Failed to fetch user profile' });
     }
-
-    if (!profile) {
-      return res.status(404).json({ error: 'User profile not found' });
-    }
-
-    // Attach role and profile info to req.user
-    req.user.role = profile.role;
-    req.user.fullName = profile.full_name;
-
-    next();
+    
   } catch (error) {
     console.error('Error in attachUserRole middleware:', error);
     return res.status(500).json({ error: 'Internal server error' });

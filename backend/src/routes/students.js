@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireSupabase } from '../config/supabase.js';
+import { requireSupabase, serviceKeyRole } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
 
@@ -14,6 +14,7 @@ router.use(restrictWriteToAdmin);
 router.get('/', async (req, res, next) => {
   try {
     const sb = requireSupabase();
+    console.log('[students] serviceKeyRole:', serviceKeyRole);
     const { batchId, limit } = req.query;
     const pageLimit = Number(limit) > 0 ? Math.min(Number(limit), 100) : 50;
 
@@ -55,10 +56,88 @@ router.post('/', async (req, res, next) => {
     const studentData = req.body;
     
     console.log('[students] Creating student:', studentData);
-    
+    console.log('[students] serviceKeyRole before insert:', serviceKeyRole);
+    // Accept either batch_id or batch (name) and course_id or course (code/name)
+    const payload = { ...studentData };
+
+    // Resolve batch if provided by name
+    if (!payload.batch_id && payload.batch) {
+      const batchName = payload.batch;
+      const { data: batchRow, error: batchErr } = await sb
+        .from('batches')
+        .select('id')
+        .eq('batch_name', batchName)
+        .maybeSingle();
+      if (batchErr) {
+        console.error('[students] Batch lookup error:', batchErr);
+        throw batchErr;
+      }
+      if (!batchRow) {
+        const msg = `Batch not found: ${batchName}`;
+        console.error('[students] ', msg);
+        const err = new Error(msg);
+        err.status = 400;
+        throw err;
+      }
+      payload.batch_id = batchRow.id;
+    }
+
+    // Resolve course if provided by code/name
+    if (!payload.course_id && payload.course) {
+      const courseKey = payload.course;
+      const { data: courseRow, error: courseErr } = await sb
+        .from('courses')
+        .select('id')
+        .or(`course_code.eq.${courseKey},course_name.eq.${courseKey}`)
+        .maybeSingle();
+      if (courseErr) {
+        console.error('[students] Course lookup error:', courseErr);
+        throw courseErr;
+      }
+      if (!courseRow) {
+        const msg = `Course not found: ${courseKey}`;
+        console.error('[students] ', msg);
+        const err = new Error(msg);
+        err.status = 400;
+        throw err;
+      }
+      payload.course_id = courseRow.id;
+    }
+
+    // Ensure required foreign keys are present
+    if (!payload.batch_id) {
+      const err = new Error('Missing batch_id for student');
+      err.status = 400;
+      throw err;
+    }
+    if (!payload.course_id) {
+      const err = new Error('Missing course_id for student');
+      err.status = 400;
+      throw err;
+    }
+
+    // Map some common frontend keys to DB column names if necessary
+    // If the client sent snake_case already, these will be no-ops
+    const dbPayload = {
+      enrollment_number: payload.enrollment_number || payload.enrollmentNumber,
+      first_name: payload.first_name || payload.firstName,
+      last_name: payload.last_name || payload.lastName,
+      email: payload.email,
+      phone_number: payload.phone_number || payload.phone || payload.phoneNumber,
+      batch_id: payload.batch_id,
+      course_id: payload.course_id,
+      enrollment_date: payload.enrollment_date || payload.admissionDate || payload.enrollmentDate,
+      residential_address: payload.residential_address || payload.address,
+      emergency_contact_name: payload.emergency_contact_name || payload.guardianName,
+      emergency_contact_phone: payload.emergency_contact_phone || payload.guardianPhone,
+      total_fees: payload.total_fees || payload.totalFees,
+      status: payload.status || 'active',
+      notes: payload.notes || null,
+    };
+
     const { data, error } = await sb
       .from('students')
-      .insert([studentData])
+      .insert([dbPayload])
       .select();
     
     if (error) {
