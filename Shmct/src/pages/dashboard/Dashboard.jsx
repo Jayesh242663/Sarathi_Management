@@ -28,6 +28,7 @@ import {
   Bar,
   Legend
 } from 'recharts';
+import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveContainer';
 import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate, getInitials, getRelativeTime } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
@@ -220,7 +221,7 @@ const Dashboard = () => {
         <div className="chart-card">
           <h3 className="chart-title">Revenue Overview</h3>
           <div className="chart-container">
-            <ResponsiveContainer width="100%" height={300}>
+            <MeasuredResponsiveContainer minHeight={220}>
               <AreaChart data={monthlyRevenueData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -251,7 +252,7 @@ const Dashboard = () => {
                   fill="url(#colorRevenue)" 
                 />
               </AreaChart>
-            </ResponsiveContainer>
+            </MeasuredResponsiveContainer>
           </div>
         </div>
 
@@ -259,7 +260,7 @@ const Dashboard = () => {
         <div className="chart-card">
           <h3 className="chart-title">Fee Collection Status</h3>
           <div className="chart-container chart-container-centered">
-            <ResponsiveContainer width="100%" height={300}>
+            <MeasuredResponsiveContainer minHeight={300}>
               <PieChart>
                 <Pie
                   data={feeStatusData}
@@ -285,7 +286,7 @@ const Dashboard = () => {
                   }}
                 />
               </PieChart>
-            </ResponsiveContainer>
+            </MeasuredResponsiveContainer>
           </div>
           <div className="chart-legend">
             {feeStatusData.map((item) => (
@@ -303,7 +304,7 @@ const Dashboard = () => {
         <div className="chart-card chart-card-full">
           <h3 className="chart-title">Students by Course</h3>
           <div className="chart-container chart-container-sm">
-            <ResponsiveContainer width="100%" height={250}>
+            <MeasuredResponsiveContainer minHeight={250}>
               <BarChart data={courseDistribution} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                 <XAxis type="number" stroke="#666" fontSize={12} />
@@ -318,7 +319,7 @@ const Dashboard = () => {
                 />
                 <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </MeasuredResponsiveContainer>
           </div>
         </div>
       )}

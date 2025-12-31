@@ -1,3 +1,24 @@
+# Tailwind CSS Setup
+
+Tailwind CSS is integrated into this project.
+
+## Usage
+
+1. Use Tailwind utility classes in your JSX and CSS files.
+2. Main Tailwind directives are included in `src/index.css`.
+3. Configuration files:
+	- `tailwind.config.js`
+	- `postcss.config.js`
+
+## Development
+
+Run the dev server as usual:
+
+```bash
+npm run dev
+```
+
+Tailwind will automatically purge unused styles in production builds.
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

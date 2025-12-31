@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { 
-  FileText, 
-  Download, 
+import {
+  FileText,
+  Download,
   Calendar,
   IndianRupee,
   Users,
@@ -9,17 +9,18 @@ import {
   Filter,
   Printer
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line
 } from 'recharts';
+import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveContainer';
 import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
@@ -27,11 +28,11 @@ import './ReportsPage.css';
 
 const ReportsPage = () => {
   const { getFilteredStudents, getFilteredPayments, currentBatch } = useStudents();
-  
+
   // Get filtered data based on current batch
   const students = getFilteredStudents();
   const payments = getFilteredPayments();
-  
+
   const [dateRange, setDateRange] = useState('all');
   const [reportType, setReportType] = useState('overview');
 
@@ -63,7 +64,7 @@ const ReportsPage = () => {
     const totalCollected = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const totalPayments = filteredPayments.length;
     const avgPayment = totalPayments > 0 ? Math.round(totalCollected / totalPayments) : 0;
-    
+
     const methodBreakdown = {};
     filteredPayments.forEach((p) => {
       if (p.paymentMethod && p.amount) {
@@ -146,19 +147,19 @@ const ReportsPage = () => {
   // Course-wise fee collection
   const courseWiseCollection = useMemo(() => {
     const courseData = {};
-    
+
     students.forEach((student) => {
       const courseName = COURSES.find((c) => c.value === student.course)?.label || student.course;
       const studentPayments = payments.filter((p) => p.studentId === student.id);
       const collected = studentPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-      
+
       if (!courseData[courseName]) {
-        courseData[courseName] = { 
-          name: courseName, 
-          totalFees: 0, 
-          collected: 0, 
+        courseData[courseName] = {
+          name: courseName,
+          totalFees: 0,
+          collected: 0,
           pending: 0,
-          students: 0 
+          students: 0
         };
       }
       courseData[courseName].totalFees += (student.totalFees || 0);
@@ -166,7 +167,7 @@ const ReportsPage = () => {
       courseData[courseName].pending += Math.max(0, (student.totalFees || 0) - collected);
       courseData[courseName].students += 1;
     });
-    
+
     return Object.values(courseData).map(course => ({
       ...course,
       percentage: course.totalFees > 0 ? Math.round((course.collected / course.totalFees) * 100) : 0,
@@ -180,8 +181,8 @@ const ReportsPage = () => {
         <div className="reports-header-text">
           <h1>Reports & Analytics</h1>
           <p>
-            {currentBatch === 'all' 
-              ? "Showing reports for all batches" 
+            {currentBatch === 'all'
+              ? "Showing reports for all batches"
               : `Batch ${currentBatch} Analytics`}
           </p>
         </div>
@@ -257,18 +258,24 @@ const ReportsPage = () => {
         <div className="reports-chart-card">
           <h3 className="reports-chart-title">{revenueTrendTitle}</h3>
           <div className="reports-chart-container">
-            <ResponsiveContainer width="100%" height={300}>
+            <MeasuredResponsiveContainer minHeight={280}>
               <LineChart data={monthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                <XAxis dataKey="name" stroke="#666" fontSize={10} angle={-45} textAnchor="end" height={60} />
+                <XAxis
+                  dataKey="name"
+                  stroke="#666"
+                  fontSize={10}
+                  interval="preserveStartEnd"
+                  tick={{ dy: 10 }}
+                />
                 <YAxis stroke="#666" fontSize={12} tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
-                <Tooltip 
+                <Tooltip
                   formatter={(value, name) => [
                     name === 'revenue' ? formatCurrency(value) : value,
                     name === 'revenue' ? 'Revenue' : name === 'payments' ? 'Payments' : 'Enrollments'
                   ]}
-                  contentStyle={{ 
-                    backgroundColor: '#141414', 
+                  contentStyle={{
+                    backgroundColor: '#141414',
                     border: '1px solid #1a1a1a',
                     borderRadius: '8px',
                     color: '#fff'
@@ -277,7 +284,7 @@ const ReportsPage = () => {
                 />
                 <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
               </LineChart>
-            </ResponsiveContainer>
+            </MeasuredResponsiveContainer>
           </div>
         </div>
 
@@ -285,15 +292,23 @@ const ReportsPage = () => {
         <div className="reports-chart-card">
           <h3 className="reports-chart-title">Payment Methods</h3>
           <div className="reports-chart-container">
-            <ResponsiveContainer width="100%" height={300}>
+            <MeasuredResponsiveContainer minHeight={280}>
+
               <BarChart data={paymentMethodData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                <XAxis dataKey="name" stroke="#666" fontSize={12} />
+               <XAxis
+  dataKey="name"
+  stroke="#666"
+  fontSize={10}
+  interval="preserveStartEnd"
+  tick={{ dy: 10 }}
+/>
+
                 <YAxis stroke="#666" fontSize={12} tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
-                <Tooltip 
+                <Tooltip
                   formatter={(value) => [formatCurrency(value), 'Amount']}
-                  contentStyle={{ 
-                    backgroundColor: '#141414', 
+                  contentStyle={{
+                    backgroundColor: '#141414',
                     border: '1px solid #1a1a1a',
                     borderRadius: '8px',
                     color: '#fff'
@@ -301,7 +316,7 @@ const ReportsPage = () => {
                 />
                 <Bar dataKey="amount" fill="#22c55e" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </MeasuredResponsiveContainer>
           </div>
         </div>
       </div>
@@ -355,14 +370,21 @@ const ReportsPage = () => {
       <div className="reports-chart-card">
         <h3 className="reports-chart-title">Enrollment Trend</h3>
         <div className="reports-chart-container small">
-          <ResponsiveContainer width="100%" height={250}>
+          <MeasuredResponsiveContainer minHeight={240}>
             <BarChart data={monthlyTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-              <XAxis dataKey="name" stroke="#666" fontSize={10} angle={-45} textAnchor="end" height={60} />
+              <XAxis
+  dataKey="name"
+  stroke="#666"
+  fontSize={10}
+  interval="preserveStartEnd"
+  tick={{ dy: 10 }}
+/>
+
               <YAxis stroke="#666" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#141414', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#141414',
                   border: '1px solid #1a1a1a',
                   borderRadius: '8px',
                   color: '#fff'
@@ -370,7 +392,7 @@ const ReportsPage = () => {
               />
               <Bar dataKey="enrollments" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="New Enrollments" />
             </BarChart>
-          </ResponsiveContainer>
+          </MeasuredResponsiveContainer>
         </div>
       </div>
     </div>

@@ -36,6 +36,15 @@
 }
 
 .dashboard-title {
+
+      .chart-container {
+        height: 220px;
+        min-height: 220px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        box-sizing: border-box;
+        /* Prevent chart overflow on small screens */
+      }
   font-size: 1.75rem;
   font-weight: 700;
   color: #ffffff;
@@ -248,14 +257,38 @@
 }
 
 .chart-container {
-  height: 300px;
-  min-height: 300px;
+  --chart-height: 300px; /* default chart height; can be overridden */
   width: 100%;
+  height: var(--chart-height);
+  min-height: 160px;
+  min-width: 0; /* ensure flex children can shrink without causing negative sizing */
+  max-width: 100%;
+  display: block;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Ensure Recharts' wrapper fills the parent container which defines the height */
+.chart-container > .recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  box-sizing: border-box;
+  display: block;
+}
+
+/* Inner direct child (ResponsiveContainer) should fill available space */
+.chart-container > div {
+  width: 100%;
+  height: 100%;
 }
 
 .chart-container-sm {
-  height: 250px;
-  min-height: 250px;
+  --chart-height: 340px;
+}
+
+/* Full-width chart cards should be taller by default, but responsive */
+.chart-card-full .chart-container {
+  --chart-height: 420px;
 }
 
 .chart-container-centered {
@@ -579,13 +612,13 @@
   }
 
   .chart-container {
-    height: 220px;
-    min-height: 220px;
+     height: 280px;
+     min-height: 280px;
   }
 
   .chart-container-sm {
-    height: 200px;
-    min-height: 200px;
+     height: 240px;
+     min-height: 240px;
   }
 
   .chart-legend {
@@ -623,6 +656,10 @@
 }
 
 @media (max-width: 480px) {
+  .chart-container-sm {
+    height: 180px;
+    min-height: 180px;
+  }
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -632,7 +669,7 @@
   }
 
   .chart-container {
-    height: 180px;
-    min-height: 180px;
+     height: 200px;
+     min-height: 200px;
   }
 }
