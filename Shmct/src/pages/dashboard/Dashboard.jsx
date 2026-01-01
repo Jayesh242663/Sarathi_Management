@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, 
@@ -32,38 +32,72 @@ import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveC
 import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate, getInitials, getRelativeTime } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
+import { getResponsiveChartConfig, formatChartLabel, getDynamicYAxisDomain, getDynamicXAxisConfig } from '../../utils/chartHelpers';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const { getStats, getFilteredStudents, getFilteredPayments, currentBatch } = useStudents();
+  const { getStats, getFilteredStudents, getFilteredPayments, currentBatch, placements } = useStudents();
   const stats = getStats();
   
+  // Viewport detection for responsive charts
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const chartConfig = useMemo(() => getResponsiveChartConfig(viewportWidth), [viewportWidth]);
+
   // Get filtered data based on current batch
   const students = getFilteredStudents();
   const payments = getFilteredPayments();
 
   // Chart data
 
-  // Show revenue for the whole current year, one entry per month
+  // Show revenue for the last 6 full months ending with the current month
   const monthlyRevenueData = useMemo(() => {
-    const months = [];
-    const now = new Date();
-    const year = now.getFullYear();
-    for (let m = 0; m < 12; m++) {
-      const date = new Date(year, m, 1);
-      const monthName = date.toLocaleString('default', { month: 'short' });
-      const monthKey = `${year}-${String(m + 1).padStart(2, '0')}`;
+    const end = new Date();
+    end.setDate(1); // first day of current month
 
-      const monthPayments = payments.filter((p) => p.paymentDate.startsWith(monthKey));
-      const total = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+    const start = new Date(end);
+    start.setMonth(start.getMonth() - 5); // 6-month window
+
+    const months = [];
+    const cursor = new Date(start);
+
+    while (cursor <= end) {
+      const year = cursor.getFullYear();
+      const month = cursor.getMonth();
+      const monthName = cursor.toLocaleString('default', { month: 'long' });
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // YYYY-MM
+
+      const monthPayments = payments.filter(
+        (p) => p.paymentDate && p.paymentDate.startsWith(monthKey)
+      );
+      const paymentTotal = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+
+      // Add placement installment revenue
+      const monthPlacementInstallments = placements.flatMap((p) => p.installments || []).filter(
+        (inst) => inst.date && inst.date.startsWith(monthKey)
+      );
+      const placementTotal = monthPlacementInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+
+      const total = paymentTotal + placementTotal;
 
       months.push({
         name: monthName,
         revenue: total,
       });
+
+      cursor.setMonth(cursor.getMonth() + 1);
     }
+
     return months;
-  }, [payments]);
+  }, [payments, placements]);
 
   const courseDistribution = useMemo(() => {
     const courseCount = {};
@@ -77,6 +111,16 @@ const Dashboard = () => {
       value,
     }));
   }, [students]);
+
+  // Calculate axis configurations for all charts (after data is defined)
+  const revenueYAxisDomain = useMemo(() => getDynamicYAxisDomain(monthlyRevenueData, 'revenue', viewportWidth), [monthlyRevenueData, viewportWidth]);
+  const revenueXAxisConfig = useMemo(() => getDynamicXAxisConfig(monthlyRevenueData, viewportWidth, true), [monthlyRevenueData, viewportWidth]);
+  
+  const courseXAxisDomain = useMemo(() => {
+    if (!courseDistribution || courseDistribution.length === 0) return [0, 10];
+    const maxValue = Math.max(...courseDistribution.map(d => d.value));
+    return [0, Math.ceil(maxValue * 1.1)]; // 10% padding above max, start from 0
+  }, [courseDistribution]);
 
   const feeStatusData = useMemo(() => {
     let paid = 0, partial = 0, pending = 0;
@@ -222,7 +266,7 @@ const Dashboard = () => {
           <h3 className="chart-title">Revenue Overview</h3>
           <div className="chart-container">
             <MeasuredResponsiveContainer minHeight={220}>
-              <AreaChart data={monthlyRevenueData}>
+              <AreaChart data={monthlyRevenueData} margin={chartConfig.margin}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -230,8 +274,23 @@ const Dashboard = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                <XAxis dataKey="name" stroke="#666" fontSize={12} />
-                <YAxis stroke="#666" fontSize={12} tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#666" 
+                  fontSize={revenueXAxisConfig.fontSize}
+                  angle={revenueXAxisConfig.angle}
+                  textAnchor={revenueXAxisConfig.textAnchor}
+                  height={revenueXAxisConfig.height}
+                  tick={{ dy: revenueXAxisConfig.dy }}
+                  interval={revenueXAxisConfig.tickInterval}
+                  tickFormatter={revenueXAxisConfig.tickFormatter}
+                />
+                <YAxis 
+                  stroke="#666" 
+                  fontSize={chartConfig.fontSize}
+                  domain={revenueYAxisDomain}
+                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} 
+                />
                 <Tooltip 
                   formatter={(value) => [formatCurrency(value), 'Revenue']}
                   contentStyle={{ 
@@ -305,10 +364,22 @@ const Dashboard = () => {
           <h3 className="chart-title">Students by Course</h3>
           <div className="chart-container chart-container-sm">
             <MeasuredResponsiveContainer minHeight={250}>
-              <BarChart data={courseDistribution} layout="vertical">
+              <BarChart data={courseDistribution} layout="vertical" margin={chartConfig.margin}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                <XAxis type="number" stroke="#666" fontSize={12} />
-                <YAxis type="category" dataKey="name" stroke="#666" fontSize={12} width={150} />
+                <XAxis 
+                  type="number" 
+                  stroke="#666" 
+                  fontSize={chartConfig.fontSize}
+                  domain={courseXAxisDomain}
+                />
+                <YAxis 
+                  type="category" 
+                  dataKey="name" 
+                  stroke="#666" 
+                  fontSize={chartConfig.fontSize} 
+                  width={viewportWidth < 640 ? 100 : 150}
+                  tickFormatter={(value) => formatChartLabel(value, viewportWidth < 640 ? 12 : 20)}
+                />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#141414', 
@@ -317,7 +388,7 @@ const Dashboard = () => {
                     color: '#fff'
                   }}
                 />
-                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={chartConfig.barSize} isAnimationActive={false} />
               </BarChart>
             </MeasuredResponsiveContainer>
           </div>

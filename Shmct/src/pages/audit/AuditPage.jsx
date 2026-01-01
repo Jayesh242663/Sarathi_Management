@@ -28,8 +28,10 @@ const AuditPage = () => {
     
     let filters = {};
     
-    // Add batch filter
-    filters.batch = currentBatch;
+    // Add batch filter only if currentBatch is valid (not null/undefined)
+    if (currentBatch && currentBatch !== 'all') {
+      filters.batch = currentBatch;
+    }
     
     if (actionFilter !== 'all') {
       filters.action = actionFilter;
@@ -140,7 +142,6 @@ const AuditPage = () => {
       card: 'Card',
       bank_transfer: 'Bank Transfer',
       cheque: 'Cheque',
-      dd: 'DD'
     };
     const bankAccounts = {
       hdfc_1_shmt: 'HDFC-1 (SHMT)',
@@ -154,7 +155,9 @@ const AuditPage = () => {
       let methodBank = '-';
       if (entry.details?.paymentMethod) {
         methodBank = paymentMethods[entry.details.paymentMethod] || entry.details.paymentMethod;
-        if (entry.details.bankMoneyReceived) {
+        // Show bank account only for UPI, Card, Bank Transfer, and Cheque
+        const bankShowMethods = ['upi', 'card', 'bank_transfer', 'cheque'];
+        if (entry.details.bankMoneyReceived && bankShowMethods.includes(entry.details.paymentMethod)) {
           methodBank += ' / ' + (bankAccounts[entry.details.bankMoneyReceived] || entry.details.bankMoneyReceived);
         }
       }
@@ -219,7 +222,6 @@ const AuditPage = () => {
       card: 'Card Payment',
       bank_transfer: 'NEFT/RTGS',
       cheque: 'Cheque',
-      dd: 'Demand Draft'
     };
 
     const bankAccounts = {
@@ -234,7 +236,9 @@ const AuditPage = () => {
       case 'RECEIPT':
       case 'PLACEMENT_PAYMENT':
         const method = paymentMethods[entry.details?.paymentMethod] || entry.details?.paymentMethod || 'N/A';
-        const bank = entry.details?.bankMoneyReceived ? ` [${bankAccounts[entry.details.bankMoneyReceived] || 'Bank Account'}]` : '';
+        // Show bank account only for UPI, Card, Bank Transfer, and Cheque
+        const bankShowMethods = ['upi', 'card', 'bank_transfer', 'cheque'];
+        const bank = entry.details?.bankMoneyReceived && bankShowMethods.includes(entry.details?.paymentMethod) ? ` [${bankAccounts[entry.details.bankMoneyReceived] || 'Bank Account'}]` : '';
         const remarks = entry.details?.remarks ? `Remark: ${entry.details.remarks}` : (entry.action === 'PLACEMENT_PAYMENT' ? 'Placement fee collection' : 'Fee collection');
         return `Being ${(entry.action === 'PLACEMENT_PAYMENT') ? 'placement fee' : 'fee'} collection received by ${method}${bank} - ${remarks}`;
       case 'REFUND':
@@ -470,10 +474,9 @@ const AuditPage = () => {
                                 card: 'Card',
                                 bank_transfer: 'Bank Transfer',
                                 cheque: 'Cheque',
-                                dd: 'DD'
                               }[entry.details.paymentMethod] || entry.details.paymentMethod}
                             </span>
-                            {entry.details.bankMoneyReceived && (
+                            {entry.details.bankMoneyReceived && ['upi', 'card', 'bank_transfer', 'cheque'].includes(entry.details.paymentMethod) && (
                               <span className="bank-name">
                                 {{
                                   hdfc_1_shmt: 'HDFC-1 (SHMT)',
@@ -560,15 +563,15 @@ const AuditPage = () => {
                             card: 'Card',
                             bank_transfer: 'Bank Transfer',
                             cheque: 'Cheque',
-                            dd: 'DD'
                           }[entry.details.paymentMethod] || entry.details.paymentMethod}
                         </span>
-                        {entry.details.bankMoneyReceived && (
+                        {entry.details.bankMoneyReceived && ['upi', 'card', 'bank_transfer', 'cheque'].includes(entry.details.paymentMethod) && (
                           <span className="card-bank-badge">
                             {{
                               hdfc_1_shmt: 'HDFC-1 (SHMT)',
                               hdfc_sss: 'HDFC (SSS)',
-                              india_overseas: 'India Overseas'
+                              india_overseas: 'India Overseas',
+                              tgsb: 'TGSB'
                             }[entry.details.bankMoneyReceived] || entry.details.bankMoneyReceived}
                           </span>
                         )}

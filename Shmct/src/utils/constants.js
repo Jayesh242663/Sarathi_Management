@@ -27,10 +27,11 @@ export const PAYMENT_METHODS = [
   { value: 'cheque', label: 'Cheque' },
 ];
 
-// Bank money received (for bank transfers)
+// Bank money received (for bank transfers, UPI, card, cheque)
 export const BANK_MONEY_RECEIVED = [
   { value: 'hdfc_1_shmt', label: 'HDFC-1 (SHMT)' },
   { value: 'india_overseas', label: 'India Overseas' },
+  { value: 'tgsb', label: 'TGSB' },
 ];
 
 // Student status options

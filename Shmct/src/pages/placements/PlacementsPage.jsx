@@ -429,14 +429,13 @@ const PlacementsPage = () => {
                                     <option value="card">Card</option>
                                     <option value="bank_transfer">Bank Transfer</option>
                                     <option value="cheque">Cheque</option>
-                                    <option value="dd">DD</option>
                                   </select>
                                 </div>
-                                {(getForm(placement.id).method === 'bank_transfer' || getForm(placement.id).method === 'upi') && (
+                                {(getForm(placement.id).method === 'bank_transfer' || getForm(placement.id).method === 'upi' || getForm(placement.id).method === 'card' || getForm(placement.id).method === 'cheque') && (
                                   <div className="form-group">
                                     <label className="form-label">
                                       <Building2 size={16} />
-                                      Bank
+                                      Bank Account
                                     </label>
                                     <select
                                       value={getForm(placement.id).bankMoneyReceived}

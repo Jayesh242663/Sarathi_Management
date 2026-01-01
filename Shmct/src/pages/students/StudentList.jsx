@@ -30,10 +30,7 @@ const StudentList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [courseFilter, setCourseFilter] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
-  
-  const itemsPerPage = 10;
 
   // Calculate fees paid for each student
   const studentsWithFees = useMemo(() => {
@@ -63,13 +60,6 @@ const StudentList = () => {
       return matchesSearch && matchesStatus && matchesCourse;
     });
   }, [studentsWithFees, searchQuery, statusFilter, courseFilter]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
 
   const handleDelete = async (studentId) => {
     try {
@@ -154,7 +144,7 @@ const StudentList = () => {
 
       {/* Results count */}
       <div className="results-count">
-        <p>Showing {paginatedStudents.length} of {filteredStudents.length} students</p>
+        <p>Showing {filteredStudents.length} students</p>
       </div>
 
       {/* Table */}
@@ -174,7 +164,7 @@ const StudentList = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedStudents.length === 0 ? (
+              {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="empty-state">
                     <Users className="empty-icon" />
@@ -183,7 +173,7 @@ const StudentList = () => {
                   </td>
                 </tr>
               ) : (
-                paginatedStudents.map((student) => (
+                filteredStudents.map((student) => (
                   <tr key={student.id} className="table-row">
                     <td data-label="Student">
                       <div className="student-cell">
@@ -249,29 +239,6 @@ const StudentList = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="pagination">
-            <p className="pagination-info">Page {currentPage} of {totalPages}</p>
-            <div className="pagination-buttons">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="pagination-btn"
-              >
-                <ChevronLeft />
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="pagination-btn"
-              >
-                <ChevronRight />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Delete Confirmation Modal */}

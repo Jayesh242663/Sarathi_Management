@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Save, User, Mail, Phone, MapPin, BookOpen, Calendar, DollarSign } from 'lucide-react';
+import { ArrowLeft, Save, User, Mail, Phone, BookOpen, Calendar, DollarSign } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { COURSES, generateBatches, STUDENT_STATUS } from '../../utils/constants';
 import { generateEnrollmentNumber } from '../../utils/formatters';
@@ -17,9 +17,6 @@ const studentSchema = z.object({
   course: z.string().min(1, 'Please select a course'),
   batch: z.string().min(1, 'Please select a batch'),
   admissionDate: z.string().min(1, 'Admission date is required'),
-  address: z.string().min(10, 'Address must be at least 10 characters'),
-  guardianName: z.string().min(2, 'Guardian name is required'),
-  guardianPhone: z.string().min(10, 'Guardian phone must be at least 10 digits'),
   status: z.string().min(1, 'Please select a status'),
   totalFees: z.coerce.number().min(1, 'Total fees must be greater than 0'),
 });
@@ -45,9 +42,6 @@ const StudentForm = () => {
       course: '',
       batch: currentBatch !== 'all' ? currentBatch : generateBatches()[0]?.value || '',
       admissionDate: new Date().toISOString().split('T')[0],
-      address: '',
-      guardianName: '',
-      guardianPhone: '',
       status: 'active',
       totalFees: 150000,
     },
@@ -65,9 +59,6 @@ const StudentForm = () => {
           course: student.course,
           batch: student.batch,
           admissionDate: student.admissionDate,
-          address: student.address,
-          guardianName: student.guardianName,
-          guardianPhone: student.guardianPhone,
           status: student.status,
           totalFees: student.totalFees,
         });
@@ -187,55 +178,6 @@ const StudentForm = () => {
               )}
             </div>
 
-            <div className="form-field full-width">
-              <label className="form-label">
-                <MapPin />
-                Address *
-              </label>
-              <textarea
-                {...register('address')}
-                rows={2}
-                className={`form-textarea ${errors.address ? 'error' : ''}`}
-                placeholder="Enter full address"
-              />
-              {errors.address && (
-                <p className="form-error">{errors.address.message}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Guardian Information */}
-        <div className="form-section">
-          <h2 className="section-title">
-            <User className="green" />
-            Guardian Information
-          </h2>
-          
-          <div className="form-grid">
-            <div className="form-field">
-              <label className="form-label">Guardian Name *</label>
-              <input
-                {...register('guardianName')}
-                className={`form-input ${errors.guardianName ? 'error' : ''}`}
-                placeholder="Enter guardian name"
-              />
-              {errors.guardianName && (
-                <p className="form-error">{errors.guardianName.message}</p>
-              )}
-            </div>
-
-            <div className="form-field">
-              <label className="form-label">Guardian Phone *</label>
-              <input
-                {...register('guardianPhone')}
-                className={`form-input ${errors.guardianPhone ? 'error' : ''}`}
-                placeholder="9876543210"
-              />
-              {errors.guardianPhone && (
-                <p className="form-error">{errors.guardianPhone.message}</p>
-              )}
-            </div>
           </div>
         </div>
 

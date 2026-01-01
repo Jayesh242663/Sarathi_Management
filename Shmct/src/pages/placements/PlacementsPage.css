@@ -42,7 +42,7 @@
    ======================================== */
 .placements-stats {
   display: grid;
-  grid-template-columns: repeat(1, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
@@ -810,7 +810,7 @@
   }
 
   .placements-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .stat-card {
@@ -828,7 +828,7 @@
   }
 
   .stat-value {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .table-wrapper {
@@ -838,8 +838,8 @@
 
   .placements-table th,
   .placements-table td {
-    padding: 8px 6px;
-    font-size: 12px;
+    padding: 10px 8px;
+    font-size: 13px;
   }
 
   .placements-table thead th {
@@ -1159,7 +1159,7 @@
   }
 
   .stat-value {
-    font-size: 1.125rem;
+    font-size: 0.95rem;
   }
 
   .stat-label {

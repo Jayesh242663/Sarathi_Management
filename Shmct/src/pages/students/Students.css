@@ -417,6 +417,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
+  flex-wrap: nowrap;
 }
 
 .actions-cell {
@@ -424,6 +425,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
+  flex-wrap: nowrap;
 }
 
 .action-btn {
@@ -434,6 +436,10 @@
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .action-btn:hover {

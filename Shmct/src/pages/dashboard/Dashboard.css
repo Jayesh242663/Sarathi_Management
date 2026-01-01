@@ -63,7 +63,7 @@
    ======================================== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(1, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -219,14 +219,14 @@
    ======================================== */
 .charts-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 16px;
 }
 
 @media (min-width: 1024px) {
   .charts-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -237,6 +237,8 @@
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 1.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
   transition: border-color 0.3s ease;
 }
 
@@ -265,7 +267,8 @@
   max-width: 100%;
   display: block;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* Ensure Recharts' wrapper fills the parent container which defines the height */
@@ -274,12 +277,14 @@
   height: 100% !important;
   box-sizing: border-box;
   display: block;
+  min-width: 300px; /* Prevent SVG from becoming too narrow on mobile */
 }
 
 /* Inner direct child (ResponsiveContainer) should fill available space */
 .chart-container > div {
   width: 100%;
   height: 100%;
+  min-width: 300px;
 }
 
 .chart-container-sm {
@@ -294,6 +299,27 @@
 .chart-container-centered {
   display: flex;
   align-items: center;
+}
+
+/* Disable hover effects on bar charts */
+.chart-container .recharts-bar-rectangle {
+  transition: none !important;
+  pointer-events: none !important;
+}
+
+.chart-container .recharts-bar-rectangle:hover {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.chart-container .recharts-bar-rectangle:active {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.chart-container .recharts-bar-rectangle:focus {
+  opacity: 1 !important;
+  filter: none !important;
 }
 
 /* Pie chart legend */
@@ -603,7 +629,7 @@
   }
 
   .stat-value {
-    font-size: 1.25rem;
+    font-size: 1rem;
   }
 
   .chart-card,
@@ -657,11 +683,11 @@
 
 @media (max-width: 480px) {
   .chart-container-sm {
-    height: 180px;
-    min-height: 180px;
+    height: 280px;
+    min-height: 280px;
   }
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .stat-card-header {
@@ -669,7 +695,7 @@
   }
 
   .chart-container {
-     height: 200px;
-     min-height: 200px;
+     height: 320px;
+     min-height: 320px;
   }
 }

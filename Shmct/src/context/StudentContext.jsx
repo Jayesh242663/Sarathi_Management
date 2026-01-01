@@ -96,8 +96,8 @@ export const StudentProvider = ({ children }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentBatch, setCurrentBatchState] = useState(() => {
-    const savedBatch = getFromStorage(STORAGE_KEYS.SELECTED_BATCH);
-    return savedBatch || getCurrentAcademicBatch();
+    // Don't use calculated batch initially - will be set when data loads
+    return getFromStorage(STORAGE_KEYS.SELECTED_BATCH) || null;
   });
   const [customBatches, setCustomBatchesState] = useState(() => {
     return getFromStorage(STORAGE_KEYS.CUSTOM_BATCHES) || [];
@@ -105,6 +105,11 @@ export const StudentProvider = ({ children }) => {
 
   // Audit log helper function
   const logAuditEvent = useCallback((action, entityType, entityId, details, entityName = '') => {
+    const inferredAmount = details && (details.amount !== undefined) ? Number(details.amount) : undefined;
+    const inferredBatchId = details && details.studentId
+      ? (students.find((s) => s.id === details.studentId)?.batchId)
+      : (details && details.batchId) ? details.batchId : undefined;
+
     const auditEntry = {
       id: uuidv4(),
       action, // 'CREATE', 'UPDATE', 'DELETE', 'PAYMENT'
@@ -112,6 +117,8 @@ export const StudentProvider = ({ children }) => {
       entityId,
       entityName,
       details,
+      amount: inferredAmount,
+      batchId: inferredBatchId,
       timestamp: new Date().toISOString(),
     };
     setAuditLog((prev) => {
@@ -120,7 +127,7 @@ export const StudentProvider = ({ children }) => {
       return newLog;
     });
     return auditEntry;
-  }, []);
+  }, [students]);
 
   // Set current batch and persist to localStorage
   const setCurrentBatch = useCallback((batch) => {
@@ -200,10 +207,22 @@ export const StudentProvider = ({ children }) => {
       setAuditLog(mappedAuditLogs);
 
       if (batches.length > 0) {
-        const activeBatch = batches.find((b) => b.is_active) || batches[0];
-        if (activeBatch) {
-          console.log('[StudentContext] Setting current batch to:', activeBatch.batch_name);
-          setCurrentBatchState(activeBatch.batch_name);
+        const savedBatch = getFromStorage(STORAGE_KEYS.SELECTED_BATCH);
+        
+        // Check if saved batch exists in database
+        const savedBatchExists = savedBatch && batches.find((b) => b.batch_name === savedBatch);
+        
+        if (savedBatchExists) {
+          console.log('[StudentContext] Using saved batch:', savedBatch);
+          setCurrentBatchState(savedBatch);
+        } else {
+          // Saved batch doesn't exist, use active batch or first batch
+          const fallbackBatch = batches.find((b) => b.is_active) || batches[0];
+          if (fallbackBatch) {
+            console.log('[StudentContext] Setting batch to:', fallbackBatch.batch_name);
+            setCurrentBatchState(fallbackBatch.batch_name);
+            setToStorage(STORAGE_KEYS.SELECTED_BATCH, fallbackBatch.batch_name);
+          }
         }
       }
 
@@ -245,9 +264,6 @@ export const StudentProvider = ({ children }) => {
       batch_id: batch.id,
       course_id: course.id,
       enrollment_date: studentData.admissionDate,
-      residential_address: studentData.address,
-      emergency_contact_name: studentData.guardianName,
-      emergency_contact_phone: studentData.guardianPhone,
       total_fees: studentData.totalFees,
       status: studentData.status || 'active',
     };
@@ -307,9 +323,6 @@ export const StudentProvider = ({ children }) => {
       batch_id: batch.id,
       course_id: course.id,
       enrollment_date: studentData.admissionDate,
-      residential_address: studentData.address,
-      emergency_contact_name: studentData.guardianName,
-      emergency_contact_phone: studentData.guardianPhone,
       total_fees: studentData.totalFees,
       status: studentData.status,
     };
@@ -532,6 +545,7 @@ export const StudentProvider = ({ children }) => {
       placementId,
       {
         placementId,
+        studentId: placement.studentId,
         amount: newInstallment.amount,
         paymentMethod: newInstallment.method,
         bankMoneyReceived: newInstallment.bankMoneyReceived,
@@ -631,8 +645,8 @@ export const StudentProvider = ({ children }) => {
         });
         console.log('[StudentContext] After batch filter, remaining logs:', filteredLog.length);
       } else {
-        console.warn('[StudentContext] Batch not found:', filters.batch);
-        filteredLog = [];
+        console.warn('[StudentContext] Batch not found:', filters.batch, '- showing all logs');
+        // Don't filter by batch if batch not found - show all logs instead of empty array
       }
     }
     

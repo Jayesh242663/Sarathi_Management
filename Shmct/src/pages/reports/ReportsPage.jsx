@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   FileText,
   Download,
@@ -17,53 +17,96 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line
+  AreaChart,
+  Area
 } from 'recharts';
 import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveContainer';
 import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
+import { getResponsiveChartConfig, formatChartLabel, getDynamicYAxisDomain, getAxisConfig, formatMonthShort, getDynamicXAxisConfig, getDynamicCountDomain } from '../../utils/chartHelpers';
 import './ReportsPage.css';
 
 const ReportsPage = () => {
-  const { getFilteredStudents, getFilteredPayments, currentBatch } = useStudents();
+  const { getFilteredStudents, getFilteredPayments, currentBatch, placements } = useStudents();
 
   // Get filtered data based on current batch
   const students = getFilteredStudents();
   const payments = getFilteredPayments();
 
-  const [dateRange, setDateRange] = useState('all');
+  const [dateRange, setDateRange] = useState('year');
   const [reportType, setReportType] = useState('overview');
 
-  // Compute start date for selected range (null = all time)
-  const rangeStartDate = useMemo(() => {
+  // Viewport detection for responsive charts
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const chartConfig = useMemo(() => getResponsiveChartConfig(viewportWidth), [viewportWidth]);
+
+  // Compute date window for the selected range (null start = all time)
+  const rangeWindow = useMemo(() => {
     const now = new Date();
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    const start = new Date(end);
     switch (dateRange) {
       case 'week':
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        start.setDate(start.getDate() - 6); // include today + previous 6 days
+        start.setHours(0, 0, 0, 0);
+        return { start, end };
       case 'month':
-        return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        start.setMonth(start.getMonth() - 1);
+        start.setHours(0, 0, 0, 0);
+        return { start, end };
       case 'quarter':
-        return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        start.setMonth(start.getMonth() - 3);
+        start.setHours(0, 0, 0, 0);
+        return { start, end };
       case 'year':
-        return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        start.setFullYear(start.getFullYear() - 1);
+        start.setHours(0, 0, 0, 0);
+        return { start, end };
       default:
-        return null;
+        return { start: null, end };
     }
   }, [dateRange]);
 
   // Filter payments by date range
   const filteredPayments = useMemo(() => {
-    if (!rangeStartDate) return payments;
-    return payments.filter((p) => new Date(p.paymentDate) >= rangeStartDate);
-  }, [payments, rangeStartDate]);
+    if (!rangeWindow.start) return payments;
+    return payments.filter((p) => {
+      if (!p.paymentDate) return false;
+      const d = new Date(p.paymentDate);
+      return d >= rangeWindow.start && d <= rangeWindow.end;
+    });
+  }, [payments, rangeWindow]);
 
   // Stats
   const stats = useMemo(() => {
     const totalCollected = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const totalPayments = filteredPayments.length;
-    const avgPayment = totalPayments > 0 ? Math.round(totalCollected / totalPayments) : 0;
+    
+    // Add placement installments to stats
+    const filteredPlacementInstallments = placements.flatMap((p) => p.installments || []).filter((inst) => {
+      if (!inst.date) return false;
+      const d = new Date(inst.date);
+      return d >= rangeWindow.start && d <= rangeWindow.end;
+    });
+    
+    const totalPlacementCollected = filteredPlacementInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+    const totalPlacementPayments = filteredPlacementInstallments.length;
+    
+    const combinedTotal = totalCollected + totalPlacementCollected;
+    const combinedPayments = totalPayments + totalPlacementPayments;
+    const avgPayment = combinedPayments > 0 ? Math.round(combinedTotal / combinedPayments) : 0;
 
     const methodBreakdown = {};
     filteredPayments.forEach((p) => {
@@ -72,24 +115,103 @@ const ReportsPage = () => {
       }
     });
 
-    return { totalCollected, totalPayments, avgPayment, methodBreakdown };
-  }, [filteredPayments]);
+    // Add placement payment methods
+    filteredPlacementInstallments.forEach((inst) => {
+      if (inst.method && inst.amount) {
+        methodBreakdown[inst.method] = (methodBreakdown[inst.method] || 0) + inst.amount;
+      }
+    });
 
-  // Monthly trend data
-  const monthlyTrend = useMemo(() => {
-    const months = [];
-    const start = new Date(rangeStartDate || new Date());
-    // Default to 12 months when no range selected
-    if (!rangeStartDate) {
-      start.setMonth(start.getMonth() - 11);
+    return { totalCollected: combinedTotal, totalPayments: combinedPayments, avgPayment, methodBreakdown };
+  }, [filteredPayments, placements, rangeWindow]);
+
+  // Trend data adapts to range: last 7 days (daily), otherwise monthly; all time groups by batch year names
+  const trendData = useMemo(() => {
+    // Helper to map student id to batch name
+    const studentBatchMap = new Map(students.map((s) => [s.id, s.batch]));
+
+    // Last 7 days: show daily points including today
+    if (dateRange === 'week') {
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+
+      const days = [];
+      const cursor = new Date(start);
+      while (cursor <= end) {
+        const dayKey = cursor.toISOString().slice(0, 10); // YYYY-MM-DD
+        const label = cursor.toLocaleDateString('default', { month: 'short', day: 'numeric' });
+
+        const dayPayments = payments.filter(
+          (p) => p.paymentDate && p.paymentDate === dayKey
+        );
+        const paymentRevenue = dayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+        // Add placement installments for the day
+        const dayPlacementInstallments = placements.flatMap((p) => p.installments || []).filter(
+          (inst) => inst.date && inst.date === dayKey
+        );
+        const placementRevenue = dayPlacementInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+
+        const revenue = paymentRevenue + placementRevenue;
+
+        const enrollments = students.filter((s) => s.admissionDate === dayKey).length;
+
+        days.push({
+          name: label,
+          revenue,
+          payments: dayPayments.length,
+          enrollments,
+        });
+
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return days;
     }
-    start.setDate(1);
 
+    // All time: group by batch names (e.g., 2022-23)
+    if (!rangeWindow.start) {
+      const batches = Array.from(new Set(students.map((s) => s.batch).filter(Boolean)));
+      // Sort batches ascending by start year if parsable
+      batches.sort((a, b) => {
+        const ya = parseInt(String(a).split('-')[0], 10) || 0;
+        const yb = parseInt(String(b).split('-')[0], 10) || 0;
+        return ya - yb;
+      });
+
+      return batches.map((batchName) => {
+        const batchStudentIds = students.filter((s) => s.batch === batchName).map((s) => s.id);
+        const batchPayments = payments.filter((p) => batchStudentIds.includes(p.studentId));
+        const paymentRevenue = batchPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        
+        // Add placement installments for the batch
+        const batchPlacements = placements.filter((p) => batchStudentIds.includes(p.studentId));
+        const batchPlacementInstallments = batchPlacements.flatMap((p) => p.installments || []);
+        const placementRevenue = batchPlacementInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+        
+        const revenue = paymentRevenue + placementRevenue;
+        const enrollments = batchStudentIds.length;
+        return {
+          name: batchName,
+          revenue,
+          payments: batchPayments.length,
+          enrollments,
+        };
+      });
+    }
+
+    // Default: monthly between window start and current month
+    const months = [];
+    const start = new Date(rangeWindow.start.getFullYear(), rangeWindow.start.getMonth(), 1);
     const end = new Date();
     end.setDate(1);
 
     const cursor = new Date(start);
     while (cursor <= end) {
+      // Always use short month format
       const monthName = cursor.toLocaleString('default', { month: 'short' });
       const year = cursor.getFullYear();
       const monthKey = `${year}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
@@ -97,36 +219,39 @@ const ReportsPage = () => {
       const monthPayments = filteredPayments.filter(
         (p) => p.paymentDate && p.paymentDate.startsWith(monthKey)
       );
-      const total = monthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const count = monthPayments.length;
+      const paymentRevenue = monthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-      // Count new students this month (respecting range start if set)
-      const newStudents = students.filter((s) => {
+      // Add placement installments for the month
+      const monthPlacementInstallments = placements.flatMap((p) => p.installments || []).filter(
+        (inst) => inst.date && inst.date.startsWith(monthKey)
+      );
+      const placementRevenue = monthPlacementInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+
+      const revenue = paymentRevenue + placementRevenue;
+
+      const enrollments = students.filter((s) => {
         if (!s.admissionDate) return false;
         const inMonth = s.admissionDate.startsWith(monthKey);
-        if (!rangeStartDate) return inMonth;
-        return inMonth && new Date(s.admissionDate) >= rangeStartDate;
+        return inMonth && (!rangeWindow.start || new Date(s.admissionDate) >= rangeWindow.start);
       }).length;
 
       months.push({
-        name: `${monthName} ${year.toString().slice(-2)}`,
-        revenue: total,
-        payments: count,
-        enrollments: newStudents,
+        name: monthName,
+        revenue,
+        payments: monthPayments.length,
+        enrollments,
       });
 
       cursor.setMonth(cursor.getMonth() + 1);
     }
 
     return months;
-  }, [filteredPayments, students, rangeStartDate]);
+  }, [dateRange, filteredPayments, payments, rangeWindow, students, placements]);
 
   const revenueTrendTitle = useMemo(() => {
     switch (dateRange) {
       case 'week':
         return 'Revenue Trend (Last 7 Days)';
-      case 'month':
-        return 'Revenue Trend (Last Month)';
       case 'quarter':
         return 'Revenue Trend (Last Quarter)';
       case 'year':
@@ -143,6 +268,16 @@ const ReportsPage = () => {
       amount,
     }));
   }, [stats.methodBreakdown]);
+
+  // Calculate axis configurations for all charts (after trendData and paymentMethodData are defined)
+  const revenueYAxisDomain = useMemo(() => getDynamicYAxisDomain(trendData, 'revenue', viewportWidth), [trendData, viewportWidth]);
+  const revenueXAxisConfig = useMemo(() => getDynamicXAxisConfig(trendData, viewportWidth, dateRange !== 'week'), [trendData, viewportWidth, dateRange]);
+  
+  const paymentYAxisDomain = useMemo(() => getDynamicYAxisDomain(paymentMethodData, 'amount', viewportWidth), [paymentMethodData, viewportWidth]);
+  const paymentXAxisConfig = useMemo(() => getDynamicXAxisConfig(paymentMethodData, viewportWidth, false), [paymentMethodData, viewportWidth]);
+  
+  const enrollmentYAxisDomain = useMemo(() => getDynamicCountDomain(trendData, 'enrollments'), [trendData]);
+  const enrollmentXAxisConfig = useMemo(() => getDynamicXAxisConfig(trendData, viewportWidth, dateRange !== 'week'), [trendData, viewportWidth, dateRange]);
 
   // Course-wise fee collection
   const courseWiseCollection = useMemo(() => {
@@ -194,7 +329,6 @@ const ReportsPage = () => {
           >
             <option value="all">All Time</option>
             <option value="week">Last 7 Days</option>
-            <option value="month">Last Month</option>
             <option value="quarter">Last Quarter</option>
             <option value="year">Last Year</option>
           </select>
@@ -259,16 +393,31 @@ const ReportsPage = () => {
           <h3 className="reports-chart-title">{revenueTrendTitle}</h3>
           <div className="reports-chart-container">
             <MeasuredResponsiveContainer minHeight={280}>
-              <LineChart data={monthlyTrend}>
+              <AreaChart data={trendData} margin={chartConfig.margin}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                 <XAxis
                   dataKey="name"
                   stroke="#666"
-                  fontSize={10}
-                  interval="preserveStartEnd"
-                  tick={{ dy: 10 }}
+                  fontSize={revenueXAxisConfig.fontSize}
+                  angle={revenueXAxisConfig.angle}
+                  textAnchor={revenueXAxisConfig.textAnchor}
+                  height={revenueXAxisConfig.height}
+                  tick={{ dy: revenueXAxisConfig.dy }}
+                  interval={revenueXAxisConfig.tickInterval}
+                  tickFormatter={revenueXAxisConfig.tickFormatter}
                 />
-                <YAxis stroke="#666" fontSize={12} tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
+                <YAxis 
+                  stroke="#666" 
+                  fontSize={chartConfig.fontSize} 
+                  domain={revenueYAxisDomain}
+                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} 
+                />
                 <Tooltip
                   formatter={(value, name) => [
                     name === 'revenue' ? formatCurrency(value) : value,
@@ -278,12 +427,13 @@ const ReportsPage = () => {
                     backgroundColor: '#141414',
                     border: '1px solid #1a1a1a',
                     borderRadius: '8px',
-                    color: '#fff'
+                    color: '#fff',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
                   }}
                   labelStyle={{ color: '#fff' }}
                 />
-                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" dot={false} />
+              </AreaChart>
             </MeasuredResponsiveContainer>
           </div>
         </div>
@@ -293,28 +443,37 @@ const ReportsPage = () => {
           <h3 className="reports-chart-title">Payment Methods</h3>
           <div className="reports-chart-container">
             <MeasuredResponsiveContainer minHeight={280}>
-
-              <BarChart data={paymentMethodData}>
+              <BarChart data={paymentMethodData} margin={chartConfig.margin}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-               <XAxis
-  dataKey="name"
-  stroke="#666"
-  fontSize={10}
-  interval="preserveStartEnd"
-  tick={{ dy: 10 }}
-/>
-
-                <YAxis stroke="#666" fontSize={12} tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
+                <XAxis
+                  dataKey="name"
+                  stroke="#666"
+                  fontSize={paymentXAxisConfig.fontSize}
+                  angle={paymentXAxisConfig.angle}
+                  textAnchor={paymentXAxisConfig.textAnchor}
+                  height={paymentXAxisConfig.height}
+                  tick={{ dy: paymentXAxisConfig.dy }}
+                  interval={paymentXAxisConfig.tickInterval}
+                  tickFormatter={paymentXAxisConfig.tickFormatter}
+                />
+                <YAxis 
+                  stroke="#666" 
+                  fontSize={chartConfig.fontSize}
+                  domain={paymentYAxisDomain}
+                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} 
+                />
                 <Tooltip
                   formatter={(value) => [formatCurrency(value), 'Amount']}
                   contentStyle={{
                     backgroundColor: '#141414',
                     border: '1px solid #1a1a1a',
                     borderRadius: '8px',
-                    color: '#fff'
+                    color: '#fff',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
                   }}
+                  labelStyle={{ color: '#fff' }}
                 />
-                <Bar dataKey="amount" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="amount" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={chartConfig.barSize} isAnimationActive={false} />
               </BarChart>
             </MeasuredResponsiveContainer>
           </div>
@@ -371,26 +530,36 @@ const ReportsPage = () => {
         <h3 className="reports-chart-title">Enrollment Trend</h3>
         <div className="reports-chart-container small">
           <MeasuredResponsiveContainer minHeight={240}>
-            <BarChart data={monthlyTrend}>
+            <BarChart data={trendData} margin={chartConfig.margin}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
               <XAxis
-  dataKey="name"
-  stroke="#666"
-  fontSize={10}
-  interval="preserveStartEnd"
-  tick={{ dy: 10 }}
-/>
-
-              <YAxis stroke="#666" fontSize={12} />
+                dataKey="name"
+                stroke="#666"
+                fontSize={enrollmentXAxisConfig.fontSize}
+                angle={enrollmentXAxisConfig.angle}
+                textAnchor={enrollmentXAxisConfig.textAnchor}
+                height={enrollmentXAxisConfig.height}
+                tick={{ dy: enrollmentXAxisConfig.dy }}
+                interval={enrollmentXAxisConfig.tickInterval}
+                tickFormatter={enrollmentXAxisConfig.tickFormatter}
+              />
+              <YAxis 
+                stroke="#666" 
+                fontSize={chartConfig.fontSize}
+                domain={enrollmentYAxisDomain}
+              />
               <Tooltip
+                formatter={(value) => value}
                 contentStyle={{
                   backgroundColor: '#141414',
                   border: '1px solid #1a1a1a',
                   borderRadius: '8px',
-                  color: '#fff'
+                  color: '#fff',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
                 }}
+                labelStyle={{ color: '#fff' }}
               />
-              <Bar dataKey="enrollments" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="New Enrollments" />
+              <Bar dataKey="enrollments" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="New Enrollments" barSize={chartConfig.barSize} isAnimationActive={false} />
             </BarChart>
           </MeasuredResponsiveContainer>
         </div>

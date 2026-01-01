@@ -33,26 +33,97 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Helper function to decode JWT and get expiration time
+  const getTokenExpiration = (token) => {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      
+      // Decode the payload
+      const decoded = JSON.parse(atob(parts[1]));
+      return decoded.exp ? decoded.exp * 1000 : null; // Convert to milliseconds
+    } catch (error) {
+      console.error('Failed to decode token:', error);
+      return null;
+    }
+  };
+
+  // Helper function to check if token is expired or about to expire
+  const isTokenExpiredOrExpiring = (token, bufferMinutes = 5) => {
+    const expTime = getTokenExpiration(token);
+    if (!expTime) return true;
+    
+    const now = Date.now();
+    const bufferMs = bufferMinutes * 60 * 1000;
+    return expTime <= (now + bufferMs);
+  };
+
   useEffect(() => {
     // Register logout handler with apiService
     setLogoutHandler(logout);
 
     // Check for existing session - PERSISTENT LOGIN
-    const storedUser = getFromStorage(STORAGE_KEYS.USER);
-    const storedToken = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-    
-    if (storedUser && storedToken) {
-      // Restore user immediately for persistent login
-      setUser(storedUser);
+    const initializeAuth = async () => {
+      const storedUser = getFromStorage(STORAGE_KEYS.USER);
+      const storedToken = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+      const storedRefreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
       
-      // Verify session in background (non-blocking)
-      // Only logout if token is definitively invalid (401)
-      verifySession(storedToken).catch(() => {
-        // Silent fail - keep user logged in even if verification fails
-        // Token refresh will handle expired tokens automatically
-      });
-    }
-    setLoading(false);
+      if (storedUser && storedToken) {
+        // Check if token is expired or about to expire (within 5 minutes)
+        if (isTokenExpiredOrExpiring(storedToken)) {
+          console.log('[AuthContext] Token expired or expiring, attempting refresh...');
+          
+          if (storedRefreshToken) {
+            try {
+              // Attempt to refresh the token proactively
+              const response = await apiService.post('/auth/refresh', {
+                refreshToken: storedRefreshToken
+              });
+              
+              if (response.accessToken) {
+                const newToken = response.accessToken;
+                const newRefreshToken = response.session?.refresh_token;
+                
+                // Update stored tokens
+                setToStorage(STORAGE_KEYS.AUTH_TOKEN, newToken);
+                if (newRefreshToken) {
+                  setToStorage(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+                }
+                console.log('[AuthContext] Token refreshed successfully');
+              }
+            } catch (error) {
+              console.error('[AuthContext] Token refresh failed:', error.message);
+              // If refresh fails, logout
+              removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+              removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+              removeFromStorage(STORAGE_KEYS.USER);
+              setLoading(false);
+              return;
+            }
+          } else {
+            // No refresh token available, logout
+            console.log('[AuthContext] No refresh token available, logging out');
+            removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+            removeFromStorage(STORAGE_KEYS.USER);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Restore user immediately for persistent login
+        setUser(storedUser);
+        
+        // Verify session in background (non-blocking)
+        // Only logout if token is definitively invalid (401)
+        verifySession(storedToken).catch(() => {
+          // Silent fail - keep user logged in even if verification fails
+          // Token refresh will handle expired tokens automatically
+        });
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const verifySession = async (token) => {

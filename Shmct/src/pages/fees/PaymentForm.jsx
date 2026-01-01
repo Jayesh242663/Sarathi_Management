@@ -179,11 +179,11 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
             )}
           </div>
 
-          {(paymentMethod === 'bank_transfer' || paymentMethod === 'upi') && (
+          {(paymentMethod === 'bank_transfer' || paymentMethod === 'upi' || paymentMethod === 'card' || paymentMethod === 'cheque') && (
             <div className="payment-field">
               <label className="payment-label">
                 <Building2 />
-                Bank Money Received *
+                Bank Account *
               </label>
               <select
                 {...register('bankMoneyReceived')}

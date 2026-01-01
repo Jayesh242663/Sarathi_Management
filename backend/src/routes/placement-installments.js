@@ -54,13 +54,28 @@ router.post('/', async (req, res, next) => {
     try {
       const created = data?.[0];
       if (created) {
+        // Fetch student to get batch_id
+        let batchId = null;
+        try {
+          const { data: studentData, error: studentError } = await sb
+            .from('user_profiles')
+            .select('batch_id')
+            .eq('id', created.student_id)
+            .single();
+          if (!studentError && studentData) {
+            batchId = studentData.batch_id;
+          }
+        } catch (e) {
+          console.warn('[placement-installments] Could not fetch student batch:', e);
+        }
+
         await sb.from('audit_logs').insert([
           {
             action: 'PLACEMENT_PAYMENT',
             entity_type: 'PLACEMENT',
             entity_id: created.placement_id,
             entity_name: 'Placement Payment',
-            batch_id: null,
+            batch_id: batchId,
             amount: created.amount,
             details: {
               installmentNumber: created.installment_number,

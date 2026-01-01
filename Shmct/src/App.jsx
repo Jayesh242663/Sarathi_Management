@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { StudentProvider } from './context/StudentContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
+import ScrollToTop from './components/layout/ScrollToTop';
 
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
@@ -20,6 +21,7 @@ const SuperAdminSetup = lazy(() => import('./pages/admin/SuperAdminSetup'));
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <StudentProvider>
           <Suspense fallback={<div style={{padding:'2rem', color:'#fff'}}>Loading...</div>}>

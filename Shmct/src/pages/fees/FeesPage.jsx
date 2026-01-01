@@ -109,7 +109,7 @@ const FeesPage = () => {
   const getStatusBadge = (status) => {
     if (status === 'paid') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+        <span className="fees-status-badge status-paid">
           <CheckCircle className="w-3 h-3" />
           Paid
         </span>
@@ -117,14 +117,14 @@ const FeesPage = () => {
     }
     if (status === 'partial') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium">
+        <span className="fees-status-badge status-partial">
           <Clock className="w-3 h-3" />
           Partial
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-400 rounded-full text-xs font-medium">
+      <span className="fees-status-badge status-pending">
         <AlertCircle className="w-3 h-3" />
         Pending
       </span>
