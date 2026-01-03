@@ -175,6 +175,7 @@
 
 .placements-table {
   width: 100%;
+  min-width: 880px;
   border-collapse: collapse;
 }
 
@@ -195,6 +196,282 @@
 
 .placements-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.02);
+}
+
+.placements-cards {
+  display: none;
+  padding: 12px;
+  gap: 12px;
+  flex-direction: column;
+}
+
+.placement-card {
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.placement-card.empty-card {
+  align-items: flex-start;
+}
+
+.placement-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.placement-card-student {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.placement-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.placement-card-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.course-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.18);
+  color: #c7d2fe;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.date-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.placement-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.placement-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.placement-card-row .label,
+.placement-card-stat .label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.placement-card-row .value,
+.placement-card-stat .value {
+  color: #fff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+
+.placement-card-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.placement-card-row .value.paid,
+.placement-card-stat .value.paid {
+  color: #4ade80;
+}
+
+.placement-card-row .value.remaining,
+.placement-card-stat .value.remaining {
+  color: #fbbf24;
+}
+
+.placement-card-row .value.remaining.pending {
+  color: #f97316;
+}
+
+.placement-card-row .value.remaining.complete {
+  color: #22c55e;
+}
+
+.placement-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.placement-card-grid.two-by-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 12px;
+}
+
+.placement-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.placement-card-row.inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.placement-card-stat input.cost-input {
+  width: 100%;
+}
+
+.payment-progress {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(34, 197, 94, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.payment-progress.placeholder {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.payment-progress.placeholder .placeholder-text {
+  margin: 0;
+}
+
+.payment-progress-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.payment-progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.payment-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c55e 0%, #60a5fa 100%);
+  transition: width 0.3s ease;
+}
+
+.payment-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.payment-progress .meta {
+  font-weight: 700;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.payment-progress .meta.paid {
+  color: #4ade80;
+}
+
+.payment-progress .meta.remaining {
+  color: #fbbf24;
+}
+
+.installments-card.mobile {
+  margin-top: 4px;
+  border-radius: 12px;
+}
+
+@media (max-width: 992px) {
+  .placements-table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 768px) {
+  .placements-table-card {
+    padding: 6px;
+  }
+
+  .table-wrapper {
+    display: none;
+  }
+
+  .placements-cards {
+    display: flex;
+  }
+
+  .placement-card-grid,
+  .placement-card-grid.two-by-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 10px;
+  }
+
+  .placement-card-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .placement-card-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .placements-cards {
+    padding: 8px;
+  }
+
+  .placement-card {
+    padding: 12px;
+  }
+
+  .placement-card-grid,
+  .placement-card-grid.two-by-two {
+    grid-template-columns: 1fr;
+  }
+
+  .placement-card-actions {
+    flex-direction: column;
+  }
 }
 
 .text-right { text-align: right; }
@@ -302,7 +579,7 @@
 
 .installments-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -314,12 +591,14 @@
 
 .installment-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
+  aspect-ratio: 1 / 1;
 }
 
 .installment-item.actionable {
@@ -371,6 +650,22 @@
   font-weight: 600;
   font-size: 12px;
   text-transform: capitalize;
+  align-self: flex-end;
+}
+
+@media (max-width: 600px) {
+  .installments-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 460px) {
+  .installments-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .installment-item {
+    aspect-ratio: auto;
+  }
 }
 
 .installment-detail-overlay {
@@ -874,7 +1169,7 @@
   }
 
   .installments-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -955,11 +1250,6 @@
 
   .placements-header h1 {
     font-size: 28px;
-  }
-
-  .placements-stats {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
   }
 
   .stat-card {

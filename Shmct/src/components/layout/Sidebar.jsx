@@ -153,8 +153,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             )}
           </div>
           
-          <div className="sidebar-nav-divider" />
-          
           {navItems
             .filter((item) => !item.roles || item.roles.includes(user?.role))
             .map((item) => (

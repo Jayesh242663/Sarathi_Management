@@ -264,19 +264,19 @@ const FeesPage = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="fees-amount">
+                        <td className="fees-amount" data-label="Total">
                           {formatCurrency(student.feesSummary?.totalFees || 0)}
                         </td>
-                        <td className="fees-amount paid">
+                        <td className="fees-amount paid" data-label="Paid">
                           {formatCurrency(student.feesSummary?.totalPaid || 0)}
                         </td>
-                        <td className="fees-amount remaining">
+                        <td className="fees-amount remaining" data-label="Remaining">
                           {formatCurrency(student.feesSummary?.remaining || 0)}
                         </td>
-                        <td>
+                        <td data-label="Status">
                           {getStatusBadge(student.feesSummary?.status)}
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           <div className="fees-action-buttons">
                             <Link
                               to={`/students/${student.id}`}

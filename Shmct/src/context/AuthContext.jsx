@@ -133,7 +133,9 @@ export const AuthProvider = ({ children }) => {
       });
       if (response.user) {
         const userData = {
-          ...response.user,
+          id: response.user.id,
+          email: response.user.email,
+          name: response.user.fullName || response.user.name || response.user.email,
           role: normalizeRole(response.user.email, response.user.role || 'auditor'),
         };
         setUser(userData);

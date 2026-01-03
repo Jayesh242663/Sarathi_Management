@@ -74,10 +74,10 @@ const Navbar = ({ onMenuClick }) => {
             </div>
             <div className="navbar-user-info">
               <p className="navbar-user-name">
-                {user?.role === 'administrator' ? 'System Administrator' : user?.role === 'auditor' ? 'Auditor Access' : 'User Account'}
+                {user?.name || user?.email?.split('@')[0] || 'Account User'}
               </p>
               <p className="navbar-user-role">
-                {user?.name || 'Account User'}
+                {user?.role === 'administrator' ? 'System Administrator' : user?.role === 'auditor' ? 'Auditor Access' : 'User Account'}
               </p>
             </div>
             <span className={`navbar-user-chevron ${showUserMenu ? 'open' : ''}`}>

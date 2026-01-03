@@ -117,33 +117,6 @@ const StudentDetail = () => {
             </div>
           </div>
 
-          {/* Contact & Guardian Info */}
-          <div className="info-grid">
-            <div className="info-card">
-              <h3 className="info-card-title">
-                <MapPin className="blue" />
-                Address
-              </h3>
-              <div className="info-card-content">
-                <p>{student.address}</p>
-              </div>
-            </div>
-            
-            <div className="info-card">
-              <h3 className="info-card-title">
-                <User className="green" />
-                Guardian Details
-              </h3>
-              <div className="info-card-content">
-                <p className="name">{student.guardianName}</p>
-                <p className="phone">
-                  <Phone />
-                  {student.guardianPhone}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Payment History */}
           <div className="info-card">
             <div className="payment-history-header">

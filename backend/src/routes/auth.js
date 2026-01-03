@@ -117,13 +117,19 @@ router.post('/login', async (req, res, next) => {
 
     console.log('[auth] Login successful for:', email);
     
+    // Get full name from multiple sources with fallback
+    const fullName = profile?.full_name || 
+                     data.user.user_metadata?.name || 
+                     data.user.user_metadata?.full_name ||
+                     email.split('@')[0];
+    
     // Return user and session with role
     res.json({
       success: true,
       user: {
         ...data.user,
         role: profile?.role || (isSuperAdminEmail(email) ? 'administrator' : 'auditor'),
-        fullName: profile?.full_name || data.user.user_metadata?.name,
+        fullName: fullName,
       },
       session: {
         access_token: data.session.access_token,
@@ -285,13 +291,19 @@ router.get('/session', async (req, res, next) => {
     }
 
     const role = profile?.role || (isSuperAdminEmail(user.email) ? 'administrator' : 'auditor');
+    
+    // Get full name from multiple sources with fallback
+    const fullName = profile?.full_name || 
+                     user.user_metadata?.name || 
+                     user.user_metadata?.full_name ||
+                     user.email?.split('@')[0];
 
     res.json({
       success: true,
       user: {
         ...user,
         role,
-        fullName: profile?.full_name || user.user_metadata?.name,
+        fullName: fullName,
       },
     });
   } catch (err) {
