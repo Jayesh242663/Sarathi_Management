@@ -95,6 +95,8 @@ export const StudentProvider = ({ children }) => {
   const [batches, setBatches] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoadError, setDataLoadError] = useState(null);
+  const [loadRetryCount, setLoadRetryCount] = useState(0);
   const [currentBatch, setCurrentBatchState] = useState(() => {
     // Don't use calculated batch initially - will be set when data loads
     return getFromStorage(STORAGE_KEYS.SELECTED_BATCH) || null;
@@ -157,10 +159,11 @@ export const StudentProvider = ({ children }) => {
     });
   }, []);
 
-  const loadSupabaseData = useCallback(async () => {
+  const loadSupabaseData = useCallback(async (retryCount = 0) => {
     try {
       setLoading(true);
-      console.log('[StudentContext] Loading data from:', `${API_BASE}/data/snapshot`);
+      setDataLoadError(null);
+      console.log('[StudentContext] Loading data from:', `${API_BASE}/data/snapshot`, `(attempt ${retryCount + 1})`);
 
       const response = await fetch(`${API_BASE}/data/snapshot`, {
         method: 'GET',
@@ -188,6 +191,23 @@ export const StudentProvider = ({ children }) => {
         auditLogs = [],
       } = data;
 
+      console.log('[StudentContext] Extracted arrays:', {
+        batchesCount: batches.length,
+        coursesCount: courses.length,
+        studentsCount: studentRows.length,
+        paymentsCount: paymentRows.length,
+        placementsCount: placementRows.length,
+        installmentsCount: placementInstallments.length,
+        auditLogsCount: auditLogs.length,
+      });
+
+      if (batches.length === 0) {
+        console.warn('[StudentContext] WARNING: No batches returned from backend!');
+      }
+      if (courses.length === 0) {
+        console.warn('[StudentContext] WARNING: No courses returned from backend!');
+      }
+
       const batchLookup = new Map(batches.map((b) => [b.id, b]));
       const courseLookup = new Map(courses.map((c) => [c.id, c]));
 
@@ -205,6 +225,7 @@ export const StudentProvider = ({ children }) => {
       setBatches(batches);
       setCourses(courses);
       setAuditLog(mappedAuditLogs);
+      setLoadRetryCount(0);
 
       if (batches.length > 0) {
         const savedBatch = getFromStorage(STORAGE_KEYS.SELECTED_BATCH);
@@ -229,6 +250,18 @@ export const StudentProvider = ({ children }) => {
       console.log('[StudentContext] Data loaded successfully');
     } catch (err) {
       console.error('[StudentContext] Error loading data from Supabase:', err);
+      console.error('[StudentContext] Stack:', err.stack);
+      setDataLoadError(err.message);
+
+      // Retry with exponential backoff (max 3 attempts)
+      if (retryCount < 2) {
+        const delayMs = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        console.log(`[StudentContext] Retrying in ${delayMs}ms...`);
+        setLoadRetryCount(retryCount + 1);
+        setTimeout(() => {
+          loadSupabaseData(retryCount + 1);
+        }, delayMs);
+      }
     } finally {
       setLoading(false);
     }
@@ -241,6 +274,12 @@ export const StudentProvider = ({ children }) => {
   // Student CRUD operations
   const addStudent = useCallback(async (studentData) => {
     if (!batches || batches.length === 0 || !courses || courses.length === 0) {
+      console.error('[StudentContext] addStudent failed - missing data:', { 
+        batchesCount: batches?.length || 0, 
+        coursesCount: courses?.length || 0,
+        batchesNull: batches === null,
+        coursesNull: courses === null 
+      });
       throw new Error('Cannot create student: batches/courses are not loaded from Supabase. Please refresh and try again.');
     }
 
@@ -252,8 +291,20 @@ export const StudentProvider = ({ children }) => {
       c.course_name === studentData.course
     );
 
-    if (!batch) throw new Error('Batch not found. Please select a valid batch.');
-    if (!course) throw new Error('Course not found. Please select a valid course.');
+    if (!batch) {
+      console.error('[StudentContext] Batch not found:', { 
+        searchValue: studentData.batch, 
+        availableBatches: batches.map(b => ({ batch_name: b.batch_name, batchName: b.batchName }))
+      });
+      throw new Error('Batch not found. Please select a valid batch.');
+    }
+    if (!course) {
+      console.error('[StudentContext] Course not found:', { 
+        searchValue: studentData.course, 
+        availableCourses: courses.map(c => ({ course_type: c.course_type, course_code: c.course_code, course_name: c.course_name }))
+      });
+      throw new Error('Course not found. Please select a valid course.');
+    }
 
     const payload = {
       enrollment_number: studentData.enrollmentNumber,
@@ -266,6 +317,9 @@ export const StudentProvider = ({ children }) => {
       enrollment_date: studentData.admissionDate,
       total_fees: studentData.totalFees,
       status: studentData.status || 'active',
+      residential_address: studentData.address || null,
+      emergency_contact_name: studentData.guardianName || null,
+      emergency_contact_phone: studentData.guardianPhone || null,
     };
 
     const { data } = await StudentService.create(payload);
@@ -325,6 +379,9 @@ export const StudentProvider = ({ children }) => {
       enrollment_date: studentData.admissionDate,
       total_fees: studentData.totalFees,
       status: studentData.status,
+      residential_address: studentData.address || null,
+      emergency_contact_name: studentData.guardianName || null,
+      emergency_contact_phone: studentData.guardianPhone || null,
     };
 
     const { data } = await StudentService.update(id, payload);
@@ -747,11 +804,15 @@ export const StudentProvider = ({ children }) => {
     payments,
     auditLog,
     loading,
+    dataLoadError,
+    loadRetryCount,
     currentBatch,
     setCurrentBatch,
     customBatches,
     addCustomBatch,
     removeCustomBatch,
+    batches,
+    courses,
     addStudent,
     updateStudent,
     deleteStudent,
@@ -768,6 +829,7 @@ export const StudentProvider = ({ children }) => {
     getPlacementsByBatch,
     addPlacementInstallment,
     updatePlacementCosts,
+    loadSupabaseData,
   };
 
   return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;

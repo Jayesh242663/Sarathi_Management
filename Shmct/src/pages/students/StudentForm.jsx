@@ -12,8 +12,8 @@ import './StudentForm.css';
 const studentSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  email: z.string().email('Please enter a valid email').optional().or(z.literal('')),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits').optional().or(z.literal('')),
   course: z.string().min(1, 'Please select a course'),
   batch: z.string().min(1, 'Please select a batch'),
   admissionDate: z.string().min(1, 'Admission date is required'),
@@ -24,7 +24,7 @@ const studentSchema = z.object({
 const StudentForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addStudent, updateStudent, getStudentById, currentBatch, customBatches } = useStudents();
+  const { addStudent, updateStudent, getStudentById, currentBatch, customBatches, loading, batches, courses, dataLoadError, loadSupabaseData } = useStudents();
   const isEditing = !!id;
 
   const {
@@ -86,15 +86,15 @@ const StudentForm = () => {
   const generatedBatches = generateBatches();
   
   // Combine generated batches with custom batches, avoiding duplicates
-  const batches = [...generatedBatches];
+  const displayBatches = [...generatedBatches];
   customBatches.forEach((cb) => {
-    if (!batches.some((b) => b.value === cb.value)) {
-      batches.push(cb);
+    if (!displayBatches.some((b) => b.value === cb.value)) {
+      displayBatches.push(cb);
     }
   });
   
   // Sort batches by year (descending)
-  batches.sort((a, b) => {
+  displayBatches.sort((a, b) => {
     const yearA = parseInt(a.value.split('-')[0]);
     const yearB = parseInt(b.value.split('-')[0]);
     return yearB - yearA;
@@ -112,6 +112,37 @@ const StudentForm = () => {
           <p>{isEditing ? 'Update student information' : 'Register a new student'}</p>
         </div>
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="loading-message">
+          <p>Loading batches and courses from Supabase...</p>
+        </div>
+      )}
+
+      {/* Data Load Error Message */}
+      {dataLoadError && !loading && (
+        <div className="warning-message">
+          <p>⚠️ Error loading data: {dataLoadError}</p>
+          <button 
+            type="button"
+            onClick={() => loadSupabaseData()} 
+            className="btn-refresh"
+          >
+            Retry Loading Data
+          </button>
+        </div>
+      )}
+
+      {/* Data Validation Warning */}
+      {!loading && (!batches || batches.length === 0 || !courses || courses.length === 0) && (
+        <div className="warning-message">
+          <p>⚠️ Warning: Batches and/or courses failed to load. Please refresh the page and try again.</p>
+          <button onClick={() => window.location.reload()} className="btn-refresh">
+            Refresh Page
+          </button>
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="student-form">
@@ -150,7 +181,7 @@ const StudentForm = () => {
             <div className="form-field">
               <label className="form-label">
                 <Mail />
-                Email *
+                Email
               </label>
               <input
                 {...register('email')}
@@ -166,7 +197,7 @@ const StudentForm = () => {
             <div className="form-field">
               <label className="form-label">
                 <Phone />
-                Phone Number *
+                Phone Number
               </label>
               <input
                 {...register('phone')}
@@ -214,7 +245,7 @@ const StudentForm = () => {
                 className={`form-select ${errors.batch ? 'error' : ''}`}
               >
                 <option value="">Select a batch</option>
-                {batches.map((batch) => (
+                {displayBatches.map((batch) => (
                   <option key={batch.value} value={batch.value}>
                     {batch.label}
                   </option>
@@ -287,7 +318,11 @@ const StudentForm = () => {
           <button type="button" onClick={() => navigate('/students')} className="btn-cancel">
             Cancel
           </button>
-          <button type="submit" disabled={isSubmitting} className="btn-submit">
+          <button 
+            type="submit" 
+            disabled={isSubmitting || loading || !batches || batches.length === 0 || !courses || courses.length === 0} 
+            className="btn-submit"
+          >
             <Save />
             {isSubmitting ? 'Saving...' : isEditing ? 'Update Student' : 'Add Student'}
           </button>
