@@ -29,7 +29,7 @@ const navItems = [
   { path: '/admin/super-admin', label: 'User Management', icon: ShieldCheck, roles: ['administrator'] },
 ];
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isOpen, onClose, isCollapsed }) => {
   const { logout, user } = useAuth();
   const { currentBatch, setCurrentBatch, customBatches, addCustomBatch, removeCustomBatch } = useStudents();
   const navigate = useNavigate();
@@ -99,7 +99,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       />
       
       {/* Sidebar */}
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+      <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Logo */}
         <div className="sidebar-header">
           <div className="sidebar-logo">

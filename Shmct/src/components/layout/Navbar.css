@@ -67,6 +67,38 @@
   }
 }
 
+/* Collapse Button - Desktop Only */
+.navbar-collapse-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navbar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.navbar-collapse-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (min-width: 1024px) {
+  .navbar-collapse-btn {
+    display: flex;
+  }
+}
+
 /* Brand Mobile */
 .navbar-brand-mobile {
   display: flex;

@@ -54,6 +54,81 @@
   }
 }
 
+/* Collapsed Sidebar State - Desktop */
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.sidebar.collapsed .sidebar-logo h1 {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-logo span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-batch-selector {
+  padding: 1rem 0.5rem;
+  text-align: center;
+}
+
+.sidebar.collapsed .batch-selector-label {
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar.collapsed .batch-selector-label span {
+  display: none;
+}
+
+.sidebar.collapsed .batch-select {
+  display: none;
+}
+
+.sidebar.collapsed .remove-batch-btn {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-nav {
+  padding: 0.75rem 0.5rem;
+  gap: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-nav-link {
+  justify-content: center;
+  padding: 0.75rem;
+  gap: 0;
+  width: 60px;
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .sidebar-nav-link span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 0.75rem 0.5rem;
+  gap: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-footer-btn {
+  justify-content: center;
+  padding: 0.75rem;
+  gap: 0;
+  width: 60px;
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .sidebar-footer-btn span {
+  display: none;
+}
+
 /* ========================================
    Sidebar Header / Logo
    ======================================== */

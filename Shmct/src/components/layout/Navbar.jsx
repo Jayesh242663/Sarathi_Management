@@ -4,14 +4,16 @@ import {
   Menu, 
   User,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Navbar.css';
 import logo from "../../assets/vite.jpeg";
 
 
-const Navbar = ({ onMenuClick }) => {
+const Navbar = ({ onMenuClick, onToggleCollapse, sidebarCollapsed }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,6 +41,10 @@ const Navbar = ({ onMenuClick }) => {
       <div className="navbar-left">
         <button onClick={onMenuClick} className="navbar-menu-btn">
           <Menu />
+        </button>
+
+        <button onClick={onToggleCollapse} className="navbar-collapse-btn" title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
         </button>
         
         {/* Brand Logo - Mobile */}
