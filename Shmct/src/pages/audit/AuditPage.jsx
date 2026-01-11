@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
   Search, 
@@ -15,13 +16,34 @@ import './AuditPage.css';
 
 const AuditPage = () => {
   const { getAuditLog, auditLog, currentBatch } = useStudents();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [sortOption, setSortOption] = useState('date-newest'); // date-newest, date-oldest, name-asc, name-desc
+  const [highlightedId, setHighlightedId] = useState(null);
+  const rowRefs = useRef({});
 
   // Filter audit log based on current filters - ONLY FINANCIAL RECORDS
   const [showAllEntries, setShowAllEntries] = useState(true);
+
+  // Handle navigation from receipt item with highlight
+  useEffect(() => {
+    if (location.state?.highlightPaymentId) {
+      const targetId = location.state.highlightPaymentId;
+      // Find the audit entry by matching payment ID in entity_id
+      const targetEntry = auditLog.find((entry) =>
+        entry.entityType === 'PAYMENT' && entry.entityId === targetId
+      );
+
+      if (targetEntry) {
+        setHighlightedId(targetEntry.id);
+      }
+
+      // Clear navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, auditLog]);
 
   const filteredAuditLog = useMemo(() => {
     console.log('[AuditPage] Filtering audit log. currentBatch:', currentBatch, 'auditLog length:', auditLog.length);
@@ -128,6 +150,26 @@ const AuditPage = () => {
       closingBalance: Math.max(0, runningBalance),
     };
   }, [filteredAuditLog, sortOption]);
+
+  // Scroll to highlighted row after it's rendered
+  useEffect(() => {
+    if (highlightedId) {
+      // Wait for DOM to update with filtered/sorted data
+      setTimeout(() => {
+        const rowElement = rowRefs.current[highlightedId];
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+
+      // Remove highlight after 3 seconds
+      const timer = setTimeout(() => {
+        setHighlightedId(null);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedId, ledgerData.entries]);
 
   const handleExportCSV = () => {
     const headers = ['Sr. No.', 'Date', 'Voucher No.', 'Particulars', 'Type', 'Method/Bank', 'Remarks', 'Debit (Rs.)', 'Credit (Rs.)', 'Balance (Rs.)'];
@@ -451,8 +493,15 @@ const AuditPage = () => {
                 {/* Opening balance removed */}
                 {ledgerData.entries.map((entry, index) => {
                   const txnType = getTransactionType(entry.action);
+                  const isHighlighted = entry.id === highlightedId;
                   return (
-                    <tr key={entry.id} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
+                    <tr
+                      key={entry.id}
+                      ref={(el) => (rowRefs.current[entry.id] = el)}
+                      className={`${index % 2 === 0 ? 'even-row' : 'odd-row'} ${
+                        isHighlighted ? 'highlighted-row' : ''
+                      }`}
+                    >
                       <td className="col-serial">{entry.serialNo}</td>
                       <td className="col-date">{formatLedgerDate(entry.timestamp)}</td>
                       <td className="col-voucher">
@@ -531,8 +580,13 @@ const AuditPage = () => {
             <div className="ledger-cards">
               {ledgerData.entries.map((entry) => {
                 const txnType = getTransactionType(entry.action);
+                const isHighlighted = entry.id === highlightedId;
                 return (
-                  <div key={entry.id} className="ledger-card">
+                  <div
+                    key={entry.id}
+                    ref={(el) => (rowRefs.current[entry.id] = el)}
+                    className={`ledger-card ${isHighlighted ? 'highlighted-card' : ''}`}
+                  >
                     <div className="card-header">
                       <div className="card-serial">#{entry.serialNo}</div>
                       <div className="card-date">{formatLedgerDate(entry.timestamp)}</div>

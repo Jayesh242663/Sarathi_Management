@@ -12,7 +12,10 @@ import {
   Trash2,
   ClipboardList,
   Briefcase,
-  ShieldCheck
+  ShieldCheck,
+  Menu,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudents } from '../../context/StudentContext';
@@ -29,7 +32,7 @@ const navItems = [
   { path: '/admin/super-admin', label: 'User Management', icon: ShieldCheck, roles: ['administrator'] },
 ];
 
-const Sidebar = ({ isOpen, onClose, isCollapsed }) => {
+const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }) => {
   const { logout, user } = useAuth();
   const { currentBatch, setCurrentBatch, customBatches, addCustomBatch, removeCustomBatch } = useStudents();
   const navigate = useNavigate();
@@ -105,9 +108,17 @@ const Sidebar = ({ isOpen, onClose, isCollapsed }) => {
           <div className="sidebar-logo">
             <h1>SHMCT<span>®</span></h1>
           </div>
-          <button onClick={onClose} className="sidebar-close">
-            <X />
-          </button>
+          <div className="sidebar-header-buttons">
+            <button onClick={onMenuClick} className="sidebar-menu-btn" title="Toggle sidebar">
+              <Menu />
+            </button>
+            <button onClick={onToggleCollapse} className="sidebar-collapse-btn" title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+              {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
+            </button>
+            <button onClick={onClose} className="sidebar-close">
+              <X />
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}

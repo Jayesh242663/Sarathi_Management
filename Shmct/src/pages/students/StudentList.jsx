@@ -37,10 +37,12 @@ const StudentList = () => {
     return students.map((student) => {
       const studentPayments = payments.filter((p) => p.studentId === student.id);
       const feesPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
+      const netTotal = Math.max(0, (student.totalFees || 0) - (student.discount || 0));
       return {
         ...student,
         feesPaid,
-        feesRemaining: student.totalFees - feesPaid,
+        feesRemaining: Math.max(0, netTotal - feesPaid),
+        netTotal,
       };
     });
   }, [students, payments]);
@@ -202,7 +204,7 @@ const StudentList = () => {
                       {formatCurrency(student.feesRemaining)}
                     </td>
                     <td data-label="Fee Status" className="fee-status-cell">
-                      {getFeeStatus(student.feesRemaining, student.totalFees)}
+                      {getFeeStatus(student.feesRemaining, student.netTotal)}
                     </td>
                     <td data-label="Actions">
                       <div className="action-buttons">

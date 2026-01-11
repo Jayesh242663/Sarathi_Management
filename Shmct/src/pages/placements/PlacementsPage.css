@@ -812,6 +812,28 @@
   gap: 6px;
 }
 
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.amount-hint {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.8rem;
+  color: #fbbf24;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .form-group.full-width {
   grid-column: 1 / -1;
 }

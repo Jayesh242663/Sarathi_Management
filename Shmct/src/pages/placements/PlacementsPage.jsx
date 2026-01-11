@@ -2,7 +2,7 @@ import { useMemo, useState, Fragment } from 'react';
 import { Briefcase, Globe2, IndianRupee, TrendingUp, ChevronDown, Plus, DollarSign, Calendar, CreditCard, MessageSquare, MapPin, Building2, X, Edit2, Save } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency, formatDate, getInitials } from '../../utils/formatters';
+import { formatCurrency, formatDate, getInitials, formatNumberWithCommas } from '../../utils/formatters';
 import { COURSES } from '../../utils/constants';
 import { PlacementService } from '../../services/apiService';
 import './PlacementsPage.css';
@@ -16,6 +16,11 @@ const PlacementsPage = () => {
   const [selectedInstallment, setSelectedInstallment] = useState(null);
   const [editingCosts, setEditingCosts] = useState(null);
   const [costForm, setCostForm] = useState({ companyCosting: '', myCosting: '' });
+
+  const formatPreview = (val) => {
+    const raw = (val ?? '').toString().replace(/,/g, '').trim();
+    return raw ? formatNumberWithCommas(raw) : '';
+  };
 
   const PLACEMENT_BANKS = [{ value: 'tgsb', label: 'TGSB' }];
   const getPlacementBankLabel = (value) => {
@@ -77,7 +82,7 @@ const PlacementsPage = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const getForm = (placementId) => formState[placementId] || { amount: '', date: '', method: 'cash', bankMoneyReceived: 'tgsb', country: '', remarks: '' };
+  const getForm = (placementId) => formState[placementId] || { amount: '', date: '', method: 'cash', bankMoneyReceived: 'tgsb', chequeNumber: '', country: '', remarks: '' };
 
   const updateForm = (placementId, key, value) => {
     setFormState((prev) => ({
@@ -98,8 +103,8 @@ const PlacementsPage = () => {
   };
 
   const handleSaveCosts = async (placementId) => {
-    const companyCosting = Number(costForm.companyCosting);
-    const myCosting = Number(costForm.myCosting);
+    const companyCosting = Number(costForm.companyCosting.toString().replace(/,/g, ''));
+    const myCosting = Number(costForm.myCosting.toString().replace(/,/g, ''));
     
     if (!companyCosting || companyCosting <= 0 || !myCosting || myCosting <= 0) {
       alert('Please enter valid amounts for both Company Costing and My Costing');
@@ -123,7 +128,7 @@ const PlacementsPage = () => {
 
   const handleAddInstallment = async (placementId) => {
     const currentForm = getForm(placementId);
-    const amountValue = Number(currentForm.amount);
+    const amountValue = Number(currentForm.amount.toString().replace(/,/g, ''));
     
     if (!amountValue || amountValue <= 0) {
       alert('Please enter a valid amount');
@@ -138,6 +143,7 @@ const PlacementsPage = () => {
         date: currentForm.date || new Date().toISOString(),
         method: currentForm.method || 'cash',
         bankMoneyReceived: currentForm.bankMoneyReceived || 'tgsb',
+        chequeNumber: currentForm.chequeNumber || null,
         country: currentForm.country || '',
         remarks: currentForm.remarks || '',
       });
@@ -150,6 +156,7 @@ const PlacementsPage = () => {
           date: '', 
           method: 'cash', 
           bankMoneyReceived: 'tgsb', 
+          chequeNumber: '',
           country: currentForm.country, 
           remarks: '' 
         },
@@ -266,10 +273,13 @@ const PlacementsPage = () => {
                     <td data-label="Company Costing" className="number">
                       {editingCosts === placement.id ? (
                         <input
-                          type="number"
+                          type="text"
                           className="cost-input"
                           value={costForm.companyCosting}
-                          onChange={(e) => setCostForm({...costForm, companyCosting: e.target.value})}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/,/g, '');
+                            setCostForm({...costForm, companyCosting: formatNumberWithCommas(value)});
+                          }}
                           placeholder="Company Cost"
                         />
                       ) : (
@@ -283,10 +293,13 @@ const PlacementsPage = () => {
                     <td data-label="My Costing" className="number">
                       {editingCosts === placement.id ? (
                         <input
-                          type="number"
+                          type="text"
                           className="cost-input"
                           value={costForm.myCosting}
-                          onChange={(e) => setCostForm({...costForm, myCosting: e.target.value})}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/,/g, '');
+                            setCostForm({...costForm, myCosting: formatNumberWithCommas(value)});
+                          }}
                           placeholder="My Cost"
                         />
                       ) : (
@@ -393,16 +406,23 @@ const PlacementsPage = () => {
                                   </div>
                                 )}
                                 <div className="form-group">
-                                  <label className="form-label">
-                                    <DollarSign size={16} />
-                                    Amount *
-                                  </label>
+                                  <div className="form-label-row">
+                                    <label className="form-label">
+                                      <DollarSign size={16} />
+                                      Amount *
+                                    </label>
+                                    {formatPreview(getForm(placement.id).amount) && (
+                                      <span className="amount-hint">{formatPreview(getForm(placement.id).amount)}</span>
+                                    )}
+                                  </div>
                                   <input
-                                    type="number"
+                                    type="text"
                                     min="0"
-                                    placeholder="0.00"
+                                    placeholder=""
                                     value={getForm(placement.id).amount}
-                                    onChange={(e) => updateForm(placement.id, 'amount', e.target.value)}
+                                    onChange={(e) => {
+                                      updateForm(placement.id, 'amount', e.target.value);
+                                    }}
                                   />
                                 </div>
                                 <div className="form-group">
@@ -449,6 +469,20 @@ const PlacementsPage = () => {
                                         </option>
                                       ))}
                                     </select>
+                                  </div>
+                                )}
+                                {getForm(placement.id).method === 'cheque' && (
+                                  <div className="form-group">
+                                    <label className="form-label">
+                                      <MessageSquare size={16} />
+                                      Cheque Number
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder=""
+                                      value={getForm(placement.id).chequeNumber}
+                                      onChange={(e) => updateForm(placement.id, 'chequeNumber', e.target.value)}
+                                    />
                                   </div>
                                 )}
                                 <div className="form-group full-width">
@@ -513,13 +547,20 @@ const PlacementsPage = () => {
                 <div className="placement-card-body">
                   <div className="placement-card-grid two-by-two">
                     <div className="placement-card-stat">
-                      <span className="label">Company Costing</span>
+                      <div className="label-row">
+                        <span className="label">Company Costing</span>
+                        {editingCosts === placement.id && formatPreview(costForm.companyCosting) && (
+                          <span className="amount-hint">{formatPreview(costForm.companyCosting)}</span>
+                        )}
+                      </div>
                       {editingCosts === placement.id ? (
                         <input
-                          type="number"
+                          type="text"
                           className="cost-input"
                           value={costForm.companyCosting}
-                          onChange={(e) => setCostForm({ ...costForm, companyCosting: e.target.value })}
+                          onChange={(e) => {
+                            setCostForm({ ...costForm, companyCosting: e.target.value });
+                          }}
                           placeholder="Company Cost"
                         />
                       ) : (
@@ -527,13 +568,20 @@ const PlacementsPage = () => {
                       )}
                     </div>
                     <div className="placement-card-stat">
-                      <span className="label">My Costing</span>
+                      <div className="label-row">
+                        <span className="label">My Costing</span>
+                        {editingCosts === placement.id && formatPreview(costForm.myCosting) && (
+                          <span className="amount-hint">{formatPreview(costForm.myCosting)}</span>
+                        )}
+                      </div>
                       {editingCosts === placement.id ? (
                         <input
-                          type="number"
+                          type="text"
                           className="cost-input"
                           value={costForm.myCosting}
-                          onChange={(e) => setCostForm({ ...costForm, myCosting: e.target.value })}
+                          onChange={(e) => {
+                            setCostForm({ ...costForm, myCosting: e.target.value });
+                          }}
                           placeholder="My Cost"
                         />
                       ) : (
@@ -639,12 +687,17 @@ const PlacementsPage = () => {
                             </div>
                           )}
                           <div className="form-group">
-                            <label className="form-label">
-                              <DollarSign size={16} />
-                              Amount *
-                            </label>
+                            <div className="form-label-row">
+                              <label className="form-label">
+                                <DollarSign size={16} />
+                                Amount *
+                              </label>
+                              {formatPreview(getForm(placement.id).amount) && (
+                                <span className="amount-hint">{formatPreview(getForm(placement.id).amount)}</span>
+                              )}
+                            </div>
                             <input
-                              type="number"
+                              type="text"
                               min="0"
                               placeholder="0.00"
                               value={getForm(placement.id).amount}
@@ -695,6 +748,20 @@ const PlacementsPage = () => {
                                   </option>
                                 ))}
                               </select>
+                            </div>
+                          )}
+                          {getForm(placement.id).method === 'cheque' && (
+                            <div className="form-group">
+                              <label className="form-label">
+                                <MessageSquare size={16} />
+                                Cheque Number
+                              </label>
+                              <input
+                                type="text"
+                                placeholder=""
+                                value={getForm(placement.id).chequeNumber}
+                                onChange={(e) => updateForm(placement.id, 'chequeNumber', e.target.value)}
+                              />
                             </div>
                           )}
                           <div className="form-group full-width">

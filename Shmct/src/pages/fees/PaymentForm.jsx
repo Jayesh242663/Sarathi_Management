@@ -1,30 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X, IndianRupee, Calendar, CreditCard, FileText, Receipt, Building2 } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatNumberWithCommas } from '../../utils/formatters';
 import './PaymentForm.css';
 
+const amountSchema = z
+  .string()
+  .transform((val) => {
+    const cleaned = (val ?? '').toString().replace(/,/g, '').trim();
+    return cleaned === '' ? NaN : Number(cleaned);
+  })
+  .refine((num) => Number.isFinite(num) && num > 0, {
+    message: 'Amount must be greater than 0',
+  });
+
 const paymentSchema = z.object({
-  amount: z.coerce.number().min(1, 'Amount must be greater than 0'),
+  amount: amountSchema,
   paymentDate: z.string().min(1, 'Payment date is required'),
   paymentMethod: z.string().min(1, 'Please select a payment method'),
   bankMoneyReceived: z.string().optional(),
+  chequeNumber: z.string().optional(),
   remarks: z.string().optional(),
+}).refine((data) => data.paymentMethod !== 'cheque' || (data.chequeNumber && data.chequeNumber.trim().length > 0), {
+  path: ['chequeNumber'],
+  message: 'Cheque number is required for cheque payments',
 });
 
-const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
-  const { addPayment, getFilteredPayments } = useStudents();
+const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment }) => {
+  const { addPayment, updatePayment, getFilteredPayments } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [displayAmount, setDisplayAmount] = useState('');
+
+  const isEditing = Boolean(payment);
 
   // Generate next receipt number
   const payments = getFilteredPayments();
   const receiptCount = payments.length + 1;
-  const receiptNumber = `RCT-${new Date().getFullYear()}-${String(receiptCount).padStart(4, '0')}`;
+  const defaultReceiptNumber = `RCT-${new Date().getFullYear()}-${String(receiptCount).padStart(4, '0')}`;
 
   const {
     register,
@@ -34,33 +51,56 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
   } = useForm({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-      amount: remainingFees > 0 ? Math.min(remainingFees, 50000) : 0,
-      paymentDate: new Date().toISOString().split('T')[0],
-      paymentMethod: 'upi',
-      bankMoneyReceived: '',
-      remarks: '',
+      amount: payment?.amount ?? (isEditing ? '' : ''),
+      paymentDate: payment?.paymentDate ?? (isEditing ? '' : ''),
+      paymentMethod: payment?.paymentMethod ?? 'upi',
+      bankMoneyReceived: payment?.bankMoneyReceived ?? '',
+      chequeNumber: payment?.chequeNumber ?? '',
+      remarks: payment?.remarks ?? '',
     },
   });
 
+  const amountValue = watch('amount');
   const paymentMethod = watch('paymentMethod');
+  const formattedAmountPreview = (() => {
+    const raw = (amountValue ?? '').toString().replace(/,/g, '').trim();
+    if (!raw) return '';
+    return formatNumberWithCommas(raw);
+  })();
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      await addPayment({
-        studentId,
-        amount: data.amount,
-        paymentDate: data.paymentDate,
-        paymentMethod: data.paymentMethod,
-        bankMoneyReceived: data.bankMoneyReceived || null,
-        remarks: data.remarks || '',
-        receiptNumber,
-      });
+      // Clean amount value (remove commas)
+      const cleanAmount = parseFloat(data.amount.toString().replace(/,/g, ''));
+      
+      if (isEditing) {
+        await updatePayment(payment.id, {
+          amount: cleanAmount,
+          paymentDate: data.paymentDate,
+          paymentMethod: data.paymentMethod,
+          bankMoneyReceived: data.bankMoneyReceived || null,
+          chequeNumber: data.chequeNumber || null,
+          remarks: data.remarks || '',
+          status: payment.status || 'completed',
+        });
+      } else {
+        await addPayment({
+          studentId,
+          amount: cleanAmount,
+          paymentDate: data.paymentDate,
+          paymentMethod: data.paymentMethod,
+          bankMoneyReceived: data.bankMoneyReceived || null,
+          chequeNumber: data.chequeNumber || null,
+          remarks: data.remarks || '',
+          receiptNumber: payment?.receiptNumber || defaultReceiptNumber,
+        });
+      }
       onClose();
     } catch (error) {
-      console.error('Error adding payment:', error);
-      setSubmitError(error.message || 'Failed to record payment. Please try again.');
+      console.error('Error adding/updating payment:', error);
+      setSubmitError(error.message || 'Failed to save payment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -85,16 +125,9 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
     };
   }, []);
 
-  const handleOverlayClick = useCallback((e) => {
-    // Close if user clicks outside the modal content
-    if (e.target && e.target.classList && e.target.classList.contains('payment-modal-overlay')) {
-      onClose();
-    }
-  }, [onClose]);
-
   return (
-    <div className="payment-modal-overlay" onClick={handleOverlayClick}>
-      <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="payment-modal-wrapper">
+      <div className="payment-modal">
         <div className="payment-modal-header">
           <div className="payment-modal-title-section">
             <Receipt className="payment-modal-icon" />
@@ -112,7 +145,7 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
         <div className="payment-receipt-info">
           <div className="payment-receipt-row">
             <span className="payment-receipt-label">Receipt No.</span>
-            <span className="payment-receipt-value">{receiptNumber}</span>
+              <span className="payment-receipt-value">{payment?.receiptNumber || defaultReceiptNumber}</span>
           </div>
           <div className="payment-receipt-row">
             <span className="payment-receipt-label">Outstanding Amount</span>
@@ -122,18 +155,21 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="payment-form">
           <div className="payment-field">
-            <label className="payment-label">
-              <IndianRupee />
-              Amount *
-            </label>
+            <div className="payment-label-row">
+              <label className="payment-label">
+                <IndianRupee />
+                Amount *
+              </label>
+              {formattedAmountPreview && (
+                <div className="payment-hint">{formattedAmountPreview}</div>
+              )}
+            </div>
             <input
               {...register('amount')}
-              type="number"
+              type="text"
               className={`payment-input ${errors.amount ? 'error' : ''}`}
-              placeholder="Enter amount"
+              placeholder={isEditing ? '' : ''}
               inputMode="decimal"
-              min={1}
-              step="0.01"
               enterKeyHint="done"
               autoComplete="off"
             />
@@ -203,6 +239,25 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
             </div>
           )}
 
+          {paymentMethod === 'cheque' && (
+            <div className="payment-field">
+              <label className="payment-label">
+                <FileText />
+                Cheque Number *
+              </label>
+              <input
+                {...register('chequeNumber')}
+                type="text"
+                className={`payment-input ${errors.chequeNumber ? 'error' : ''}`}
+                placeholder=""
+                autoComplete="off"
+              />
+              {errors.chequeNumber && (
+                <p className="payment-error">{errors.chequeNumber.message}</p>
+              )}
+            </div>
+          )}
+
           <div className="payment-field full-width">
             <label className="payment-label">
               <FileText />
@@ -212,7 +267,7 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
               {...register('remarks')}
               rows={2}
               className="payment-textarea"
-              placeholder="Add any notes about this payment..."
+              placeholder={isEditing ? '' : ''}
               autoComplete="off"
             />
           </div>
@@ -228,7 +283,7 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose }) => {
               className="payment-btn payment-btn-submit"
             >
               <Receipt size={16} />
-              {isSubmitting ? 'Recording...' : 'Issue Receipt'}
+              {isSubmitting ? (isEditing ? 'Updating...' : 'Recording...') : (isEditing ? 'Update Payment' : 'Issue Receipt')}
             </button>
           </div>
         </form>

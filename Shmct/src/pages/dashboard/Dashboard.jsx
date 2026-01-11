@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Users, 
   UserPlus, 
@@ -11,8 +11,12 @@ import {
   CreditCard,
   Clock,
   BookOpen,
-  CheckCircle
+  CheckCircle,
+  User,
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { 
   AreaChart, 
   Area, 
@@ -33,11 +37,21 @@ import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate, getInitials, getRelativeTime } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
 import { getResponsiveChartConfig, formatChartLabel, getDynamicYAxisDomain, getDynamicXAxisConfig } from '../../utils/chartHelpers';
+import '../../components/layout/Navbar.css';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const { getStats, getFilteredStudents, getFilteredPayments, currentBatch, placements } = useStudents();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const stats = getStats();
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
   
   // Viewport detection for responsive charts
   const [viewportWidth, setViewportWidth] = useState(
@@ -49,6 +63,13 @@ const Dashboard = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Simulate data loading delay
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, [currentBatch]);
 
   const chartConfig = useMemo(() => getResponsiveChartConfig(viewportWidth), [viewportWidth]);
 
@@ -198,6 +219,64 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
+      {/* User Button */}
+      <div className="dashboard-user-btn">
+        <div className="navbar-user">
+          <button 
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="navbar-user-btn"
+            aria-label="User menu"
+            title={`${user?.name || 'User'} - ${user?.role === 'administrator' ? 'Administrator' : user?.role === 'auditor' ? 'Auditor' : 'User'}`}
+          >
+            <div className="navbar-user-avatar">
+              {user?.name ? user.name.charAt(0).toUpperCase() : <User />}
+            </div>
+            <div className="navbar-user-info">
+              <p className="navbar-user-name">
+                {user?.name || user?.email?.split('@')[0] || 'Account User'}
+              </p>
+              <p className="navbar-user-role">
+                {user?.role === 'administrator' ? 'System Administrator' : user?.role === 'auditor' ? 'Auditor Access' : 'User Account'}
+              </p>
+            </div>
+            <span className={`navbar-user-chevron ${showUserMenu ? 'open' : ''}`}>
+              <ChevronDown />
+            </span>
+          </button>
+
+          {/* Dropdown Menu */}
+          {showUserMenu && (
+            <>
+              <div 
+                className="navbar-dropdown-overlay" 
+                onClick={() => setShowUserMenu(false)}
+              />
+              <div className="navbar-dropdown">
+                <div className="navbar-dropdown-header">
+                  <div className="navbar-dropdown-avatar">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                  </div>
+                  <div className="navbar-dropdown-info">
+                    <p className="name">{user?.role === 'administrator' ? 'System Administrator' : user?.role === 'auditor' ? 'Auditor Access' : 'User Account'}</p>
+                    <p className="email">{user?.email || 'user@shmct.com'}</p>
+                    <p className="role-badge">
+                      {user?.name || 'Account User'}
+                    </p>
+                  </div>
+                </div>
+                <div className="navbar-dropdown-divider" />
+                <div className="navbar-dropdown-menu">
+                  <button onClick={handleLogout} className="navbar-dropdown-item logout">
+                    <LogOut />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Header */}
       <div className="dashboard-header">
         <h1 className="dashboard-title">Dashboard</h1>
@@ -207,6 +286,51 @@ const Dashboard = () => {
             : `Batch ${currentBatch} Overview`}
         </p>
       </div>
+
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <>
+          {/* Skeleton Stats Cards */}
+          <div className="stats-grid">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="stat-card skeleton-card">
+                <div className="stat-card-header">
+                  <div className="skeleton-icon" />
+                  <div className="stat-info">
+                    <div className="skeleton-label" />
+                    <div className="skeleton-value" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Skeleton Charts */}
+          <div className="charts-section">
+            <div className="chart-section skeleton-section">
+              <div className="skeleton-title" />
+              <div className="skeleton-chart" />
+            </div>
+            <div className="chart-section skeleton-section">
+              <div className="skeleton-title" />
+              <div className="skeleton-chart" />
+            </div>
+          </div>
+
+          {/* Skeleton Table */}
+          <div className="data-section">
+            <div className="skeleton-title" style={{ marginBottom: '1.5rem' }} />
+            <div className="skeleton-table">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="skeleton-row" />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Actual Content - Hidden while loading */}
+      <div style={{ display: isLoading ? 'none' : 'block' }}>
 
       {/* Stats Cards */}
       <div className="stats-grid">
@@ -473,6 +597,7 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

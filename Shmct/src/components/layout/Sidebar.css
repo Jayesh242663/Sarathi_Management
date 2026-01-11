@@ -188,6 +188,67 @@
 }
 
 /* ========================================
+   Sidebar Header Buttons
+   ======================================== */
+.sidebar-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-header-buttons {
+    gap: 0.25rem;
+  }
+}
+
+.sidebar-menu-btn,
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-menu-btn:hover,
+.sidebar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.sidebar-menu-btn svg,
+.sidebar-collapse-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-menu-btn {
+    display: none;
+  }
+}
+
+.sidebar.collapsed .sidebar-menu-btn,
+.sidebar.collapsed .sidebar-collapse-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.sidebar.collapsed .sidebar-menu-btn svg,
+.sidebar.collapsed .sidebar-collapse-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ========================================
    Batch Selector
    ======================================== */
 .sidebar-batch-selector {

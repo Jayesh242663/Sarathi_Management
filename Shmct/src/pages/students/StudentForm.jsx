@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { ArrowLeft, Save, User, Mail, Phone, BookOpen, Calendar, DollarSign } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { COURSES, generateBatches, STUDENT_STATUS } from '../../utils/constants';
-import { generateEnrollmentNumber } from '../../utils/formatters';
+import { generateEnrollmentNumber, formatNumberWithCommas } from '../../utils/formatters';
 import './StudentForm.css';
 
 const studentSchema = z.object({
@@ -18,7 +18,23 @@ const studentSchema = z.object({
   batch: z.string().min(1, 'Please select a batch'),
   admissionDate: z.string().min(1, 'Admission date is required'),
   status: z.string().min(1, 'Please select a status'),
-  totalFees: z.coerce.number().min(1, 'Total fees must be greater than 0'),
+  totalFees: z.preprocess((v) => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const cleaned = v.replace(/,/g, '').trim();
+      return cleaned === '' ? NaN : Number(cleaned);
+    }
+    return v;
+  }, z.number().min(1, 'Total fees must be greater than 0')),
+  discount: z.preprocess((v) => {
+    if (v === '' || v == null) return 0;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const cleaned = v.replace(/,/g, '').trim();
+      return cleaned === '' ? 0 : Number(cleaned);
+    }
+    return 0;
+  }, z.number().min(0, 'Discount cannot be negative')),
 });
 
 const StudentForm = () => {
@@ -31,6 +47,8 @@ const StudentForm = () => {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(studentSchema),
@@ -43,7 +61,8 @@ const StudentForm = () => {
       batch: currentBatch !== 'all' ? currentBatch : generateBatches()[0]?.value || '',
       admissionDate: new Date().toISOString().split('T')[0],
       status: 'active',
-      totalFees: 150000,
+      totalFees: 120000,
+      discount: 0,
     },
   });
 
@@ -61,18 +80,34 @@ const StudentForm = () => {
           admissionDate: student.admissionDate,
           status: student.status,
           totalFees: student.totalFees,
+          discount: student.discount || 0,
         });
       }
     }
   }, [id, isEditing, getStudentById, reset]);
 
+  const watchedTotalFees = watch('totalFees');
+  const watchedDiscount = watch('discount');
+
+  const formatPreview = (val) => {
+    const raw = (val ?? '').toString().replace(/,/g, '').trim();
+    return raw ? formatNumberWithCommas(raw) : '';
+  };
+
   const onSubmit = async (data) => {
     try {
+      // Clean numeric values (remove commas)
+      const cleanData = {
+        ...data,
+        totalFees: parseFloat(data.totalFees.toString().replace(/,/g, '')),
+        discount: data.discount ? parseFloat(data.discount.toString().replace(/,/g, '')) : 0,
+      };
+
       if (isEditing) {
-        await updateStudent(id, data);
+        await updateStudent(id, cleanData);
       } else {
         await addStudent({
-          ...data,
+          ...cleanData,
           enrollmentNumber: generateEnrollmentNumber(),
         });
       }
@@ -113,36 +148,7 @@ const StudentForm = () => {
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="loading-message">
-          <p>Loading batches and courses from Supabase...</p>
-        </div>
-      )}
-
-      {/* Data Load Error Message */}
-      {dataLoadError && !loading && (
-        <div className="warning-message">
-          <p>⚠️ Error loading data: {dataLoadError}</p>
-          <button 
-            type="button"
-            onClick={() => loadSupabaseData()} 
-            className="btn-refresh"
-          >
-            Retry Loading Data
-          </button>
-        </div>
-      )}
-
-      {/* Data Validation Warning */}
-      {!loading && (!batches || batches.length === 0 || !courses || courses.length === 0) && (
-        <div className="warning-message">
-          <p>⚠️ Warning: Batches and/or courses failed to load. Please refresh the page and try again.</p>
-          <button onClick={() => window.location.reload()} className="btn-refresh">
-            Refresh Page
-          </button>
-        </div>
-      )}
+      {/* Removed loading/error banners related to Supabase data fetching */}
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="student-form">
@@ -160,6 +166,19 @@ const StudentForm = () => {
                 {...register('firstName')}
                 className={`form-input ${errors.firstName ? 'error' : ''}`}
                 placeholder="Enter first name"
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData('text');
+                  if (text && text.trim().includes(' ')) {
+                    e.preventDefault();
+                    const parts = text.trim().split(/\s+/);
+                    const first = parts.shift() || '';
+                    const last = parts.join(' ');
+                    setValue('firstName', first, { shouldValidate: true, shouldDirty: true });
+                    if (last) {
+                      setValue('lastName', last, { shouldValidate: true, shouldDirty: true });
+                    }
+                  }
+                }}
               />
               {errors.firstName && (
                 <p className="form-error">{errors.firstName.message}</p>
@@ -299,15 +318,39 @@ const StudentForm = () => {
           
           <div className="form-grid">
             <div className="form-field">
-              <label className="form-label">Total Course Fees (₹) *</label>
+              <div className="form-label-row">
+                <label className="form-label">Total Course Fees (₹) *</label>
+                {formatPreview(watchedTotalFees) && (
+                  <span className="form-hint">{formatPreview(watchedTotalFees)}</span>
+                )}
+              </div>
               <input
                 {...register('totalFees')}
-                type="number"
+                type="text"
                 className={`form-input ${errors.totalFees ? 'error' : ''}`}
-                placeholder="150000"
+                placeholder=""
               />
               {errors.totalFees && (
                 <p className="form-error">{errors.totalFees.message}</p>
+              )}
+            </div>
+
+            <div className="form-field">
+              <div className="form-label-row">
+                <label className="form-label">Discount (₹) (Optional)</label>
+                {formatPreview(watchedDiscount) && (
+                  <span className="form-hint">{formatPreview(watchedDiscount)}</span>
+                )}
+              </div>
+              <input
+                {...register('discount')}
+                type="text"
+                className={`form-input ${errors.discount ? 'error' : ''}`}
+                placeholder=""
+                min={0}
+              />
+              {errors.discount && (
+                <p className="form-error">{errors.discount.message}</p>
               )}
             </div>
           </div>

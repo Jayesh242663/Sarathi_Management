@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   CreditCard, 
@@ -28,6 +28,7 @@ import './FeesPage.css';
 const FeesPage = () => {
   const { getStudentFeesSummary, getFilteredStudents, getFilteredPayments, currentBatch } = useStudents();
   const { canEdit } = useAuth();
+  const navigate = useNavigate();
   
   // Get filtered data based on current batch
   const students = getFilteredStudents();
@@ -77,9 +78,10 @@ const FeesPage = () => {
 
   // Summary stats
   const stats = useMemo(() => {
-    const totalFees = students.reduce((sum, s) => sum + (s.totalFees || 0), 0);
+    const totalFees = students.reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const pendingFees = Math.max(0, totalFees - totalPaid);
+    const totalDiscount = students.reduce((sum, s) => sum + (s.discount || 0), 0);
     const paidCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'paid').length;
     const partialCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'partial').length;
     const pendingCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'pending').length;
@@ -88,10 +90,10 @@ const FeesPage = () => {
       totalFees, 
       totalPaid, 
       pendingFees, 
+      totalDiscount,
       paidCount, 
       partialCount, 
       pendingCount,
-      collectionPercentage: totalFees > 0 ? Math.round((totalPaid / totalFees) * 100) : 0,
     };
   }, [students, payments, studentsWithFees]);
 
@@ -105,6 +107,15 @@ const FeesPage = () => {
         return { ...payment, student };
       });
   }, [payments, students]);
+
+  const navigateToAudit = (payment) => {
+    navigate('/audit', {
+      state: {
+        highlightPaymentId: payment.id,
+        receiptNumber: payment.receiptNumber,
+      },
+    });
+  };
 
   const getStatusBadge = (status) => {
     if (status === 'paid') {
@@ -186,13 +197,11 @@ const FeesPage = () => {
         <div className="fees-stat-card">
           <div className="fees-stat-content">
             <div className="fees-stat-icon purple">
-              <CreditCard />
+              <ArrowRightLeft />
             </div>
             <div>
-              <p className="fees-stat-label">Collection Rate</p>
-              <p className="fees-stat-value purple">
-                {stats.totalFees > 0 ? Math.round((stats.totalPaid / stats.totalFees) * 100) : 0}%
-              </p>
+              <p className="fees-stat-label">Loss (Discounts)</p>
+              <p className="fees-stat-value purple">{formatCurrency(stats.totalDiscount)}</p>
             </div>
           </div>
         </div>
@@ -252,7 +261,19 @@ const FeesPage = () => {
                     </tr>
                   ) : (
                     paginatedStudents.map((student) => (
-                      <tr key={student.id} className="fees-table-row">
+                      <tr
+                        key={student.id}
+                        className="fees-table-row"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/students/${student.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(`/students/${student.id}`);
+                          }
+                        }}
+                      >
                         <td>
                           <div className="fees-student-cell">
                             <div className="fees-student-avatar">
@@ -282,12 +303,16 @@ const FeesPage = () => {
                               to={`/students/${student.id}`}
                               className="fees-action-btn view"
                               title="View Details"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Eye />
                             </Link>
                             {canEdit() && student.feesSummary?.remaining > 0 && (
                               <button
-                                onClick={() => setSelectedStudent(student)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedStudent(student);
+                                }}
                                 className="fees-action-btn add"
                                 title="Record Payment"
                               >
@@ -346,7 +371,20 @@ const FeesPage = () => {
           ) : (
             <div className="fees-recent-list">
               {recentPayments.map((payment, index) => (
-                <div key={payment.id} className="fees-receipt-item">
+                <div
+                  key={payment.id}
+                  className="fees-receipt-item"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigateToAudit(payment)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigateToAudit(payment);
+                    }
+                  }}
+                  aria-label={`View audit entry for receipt ${payment.receiptNumber}`}
+                >
                   <div className="receipt-serial">#{recentPayments.length - index}</div>
                   <div className="receipt-content">
                     <div className="receipt-header-row">

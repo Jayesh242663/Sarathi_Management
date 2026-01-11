@@ -131,6 +131,7 @@ router.post('/', async (req, res, next) => {
       emergency_contact_name: payload.emergency_contact_name || payload.guardianName,
       emergency_contact_phone: payload.emergency_contact_phone || payload.guardianPhone,
       total_fees: payload.total_fees || payload.totalFees,
+      discount: payload.discount !== undefined ? payload.discount : (payload.discount_amount || 0),
       status: payload.status || 'active',
       notes: payload.notes || null,
     };

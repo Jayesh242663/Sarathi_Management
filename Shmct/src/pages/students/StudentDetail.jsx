@@ -14,7 +14,8 @@ import {
   IndianRupee,
   TrendingUp,
   Clock,
-  Building2
+  Building2,
+  Pencil
 } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +30,7 @@ const StudentDetail = () => {
   const { getStudentById, getStudentFeesSummary, getPaymentsByStudentId } = useStudents();
   const { canEdit } = useAuth();
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
   
   const student = getStudentById(id);
   const feesSummary = getStudentFeesSummary(id);
@@ -132,7 +134,7 @@ const StudentDetail = () => {
               )}
             </div>
             
-            {payments.length === 0 ? (
+              {payments.length === 0 ? (
               <div className="empty-state">
                 <CreditCard className="empty-icon" />
                 <p className="empty-text">No payments recorded yet</p>
@@ -162,9 +164,21 @@ const StudentDetail = () => {
                           )}
                         </div>
                       </div>
-                      <div className="payment-item-right">
+                        <div className="payment-item-right">
                         <p className="payment-date">{formatDate(payment.paymentDate)}</p>
                         <p className="payment-time">{getRelativeTime(payment.createdAt)}</p>
+                          {canEdit() && (
+                            <button
+                              className="payment-edit-btn"
+                              onClick={() => {
+                                setEditingPayment(payment);
+                                setShowPaymentForm(true);
+                              }}
+                              title="Edit payment"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -256,6 +270,7 @@ const StudentDetail = () => {
           studentId={id}
           studentName={`${student.firstName} ${student.lastName}`}
           remainingFees={feesSummary?.remaining || 0}
+          payment={editingPayment}
           onClose={() => setShowPaymentForm(false)}
         />
       )}

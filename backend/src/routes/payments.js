@@ -50,6 +50,7 @@ router.post('/', async (req, res, next) => {
       paymentDate,
       paymentMethod,
       bankMoneyReceived,
+      chequeNumber,
       remarks,
       receiptNumber,
     } = req.body;
@@ -78,6 +79,7 @@ router.post('/', async (req, res, next) => {
       payment_date: paymentDate,
       payment_method: paymentMethod,
       bank_account: bankMoneyReceived || null,
+      cheque_number: chequeNumber || null,
       notes: remarks || '',
       status: 'completed',
       receipt_number: receiptNumber || buildReceiptNumber(),
@@ -104,6 +106,7 @@ router.post('/', async (req, res, next) => {
           details: {
             paymentMethod,
             bankMoneyReceived: bankMoneyReceived || null,
+            chequeNumber: chequeNumber || null,
             receiptNumber: data.receipt_number,
             remarks: remarks || '',
           },
@@ -136,6 +139,7 @@ router.put('/:id', async (req, res, next) => {
         payment_date: updateData.paymentDate,
         payment_method: updateData.paymentMethod,
         bank_account: updateData.bankMoneyReceived,
+        cheque_number: updateData.chequeNumber || null,
         notes: updateData.remarks,
         status: updateData.status,
       })

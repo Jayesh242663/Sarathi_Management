@@ -10,6 +10,15 @@ export const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+// Format number with Indian comma separators (1,00,000)
+export const formatNumberWithCommas = (value) => {
+  if (!value) return '';
+  const numValue = typeof value === 'string' ? value.replace(/,/g, '') : value;
+  const num = parseFloat(numValue);
+  if (isNaN(num)) return '';
+  return new Intl.NumberFormat('en-IN').format(Math.floor(num));
+};
+
 // Format date
 export const formatDate = (date) => {
   if (!date) return '-';

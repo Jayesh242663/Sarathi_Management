@@ -81,6 +81,7 @@ router.post('/', async (req, res, next) => {
               installmentNumber: created.installment_number,
               paymentMethod: created.payment_method,
               bankMoneyReceived: created.bank_account || null,
+              chequeNumber: created.cheque_number || null,
               remarks: created.notes || '',
               studentId: created.student_id,
             },

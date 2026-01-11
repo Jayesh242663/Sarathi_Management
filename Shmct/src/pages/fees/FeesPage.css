@@ -363,10 +363,15 @@
 .fees-table-row {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   transition: background-color 0.2s ease;
+  cursor: pointer;
 }
 
 .fees-table-row:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+
+.fees-table-row:active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* Amount Cells */
@@ -648,11 +653,18 @@
   transition: all 0.2s ease;
   position: relative;
   border-left: 3px solid #4ade80;
+  cursor: pointer;
 }
 
 .fees-receipt-item:hover {
   background: rgba(40, 40, 40, 0.8);
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+.fees-receipt-item:focus-visible {
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18);
 }
 
 .receipt-serial {

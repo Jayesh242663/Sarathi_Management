@@ -447,6 +447,38 @@ svg.yellow {
 
 .payment-item-right {
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-end;
+}
+
+.payment-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.payment-edit-btn:active {
+  transform: translateY(0);
+}
+
+.payment-edit-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .payment-date {
@@ -602,9 +634,12 @@ svg.yellow {
     align-items: flex-start;
     gap: 1rem;
   }
+
+  .detail-header-left {
     justify-content: center;
     text-align: center;
-  .detail-header-left {
+    width: 100%;
+  }
 
   .profile-card,
   .info-card {
@@ -626,8 +661,6 @@ svg.yellow {
   .quick-info-row {
     flex-direction: column;
     align-items: flex-start;
-  }
-    width: 100%;
   }
 
   .btn-edit {

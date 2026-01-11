@@ -26,6 +26,7 @@ const mapStudent = (student, batchLookup, courseLookup) => {
     guardianPhone: student.emergency_contact_phone || '',
     status: student.status,
     totalFees: Number(student.total_fees || 0),
+    discount: Number(student.discount || 0),
     createdAt: student.created_at,
     updatedAt: student.updated_at,
   };
@@ -39,6 +40,7 @@ const mapPayment = (payment) => ({
   paymentDate: payment.payment_date,
   paymentMethod: payment.payment_method,
   bankMoneyReceived: payment.bank_account || null,
+  chequeNumber: payment.cheque_number || '',
   receiptNumber: payment.receipt_number || '',
   createdAt: payment.created_at,
   status: payment.status,
@@ -316,6 +318,7 @@ export const StudentProvider = ({ children }) => {
       course_id: course.id,
       enrollment_date: studentData.admissionDate,
       total_fees: studentData.totalFees,
+      discount: studentData.discount || 0,
       status: studentData.status || 'active',
       residential_address: studentData.address || null,
       emergency_contact_name: studentData.guardianName || null,
@@ -331,8 +334,30 @@ export const StudentProvider = ({ children }) => {
 
     setStudents((prev) => [mapped, ...prev]);
 
-    // Note: Backend automatically creates a placeholder placement
-    // Reload data to get the placement with its proper UUID
+    // Ensure a placeholder placement exists for the new student (defensive in case backend hook fails)
+    try {
+      const placementPayload = {
+        student_id: mapped.id,
+        batch_id: mapped.batchId,
+        company_name: 'TBD',
+        placement_location: 'TBD',
+        company_cost: 1,
+        institution_cost: 1,
+        placement_date: new Date().toISOString().slice(0, 10),
+        notes: 'Auto-created placeholder. Update with real placement details.',
+      };
+      const placementResp = await PlacementService.create(placementPayload);
+      const createdPlacement = placementResp.data || placementResp;
+
+      setPlacements((prev) => [
+        ...prev,
+        mapPlacement(createdPlacement, [], new Map(batches.map((b) => [b.id, b]))),
+      ]);
+    } catch (placementErr) {
+      console.warn('[addStudent] Placement placeholder creation failed (non-fatal):', placementErr);
+    }
+
+    // Refresh data to ensure placement and related views stay in sync
     setTimeout(() => {
       loadSupabaseData();
     }, 500);
@@ -378,6 +403,7 @@ export const StudentProvider = ({ children }) => {
       course_id: course.id,
       enrollment_date: studentData.admissionDate,
       total_fees: studentData.totalFees,
+      discount: studentData.discount || 0,
       status: studentData.status,
       residential_address: studentData.address || null,
       emergency_contact_name: studentData.guardianName || null,
@@ -488,6 +514,7 @@ export const StudentProvider = ({ children }) => {
       paymentDate: paymentData.paymentDate,
       paymentMethod: paymentData.paymentMethod,
       bankMoneyReceived: paymentData.bankMoneyReceived || null,
+      chequeNumber: paymentData.chequeNumber || null,
       remarks: paymentData.remarks || '',
       receiptNumber: paymentData.receiptNumber,
     };
@@ -509,9 +536,41 @@ export const StudentProvider = ({ children }) => {
         amount: mappedPayment.amount,
         paymentMethod: mappedPayment.paymentMethod,
         bankMoneyReceived: mappedPayment.bankMoneyReceived || null,
+        chequeNumber: mappedPayment.chequeNumber || null,
         receiptNumber: mappedPayment.receiptNumber,
         paymentDate: mappedPayment.paymentDate,
         remarks: mappedPayment.remarks,
+      },
+      studentName
+    );
+
+    return mappedPayment;
+  }, [students, logAuditEvent]);
+
+  const updatePayment = useCallback(async (id, paymentData) => {
+    const response = await PaymentService.update(id, paymentData);
+    const updated = response.data || response;
+    const mappedPayment = mapPayment(updated);
+
+    setPayments((prev) => prev.map((p) => (p.id === id ? mappedPayment : p)));
+
+    // Log audit event
+    const student = students.find((s) => s.id === mappedPayment.studentId);
+    const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown';
+
+    logAuditEvent(
+      'PAYMENT',
+      'PAYMENT',
+      mappedPayment.id,
+      {
+        studentId: mappedPayment.studentId,
+        amount: mappedPayment.amount,
+        paymentMethod: mappedPayment.paymentMethod,
+        bankMoneyReceived: mappedPayment.bankMoneyReceived || null,
+        receiptNumber: mappedPayment.receiptNumber,
+        paymentDate: mappedPayment.paymentDate,
+        remarks: mappedPayment.remarks,
+        status: mappedPayment.status,
       },
       studentName
     );
@@ -542,6 +601,7 @@ export const StudentProvider = ({ children }) => {
       payment_date: installmentData.date || new Date().toISOString().split('T')[0],
       payment_method: installmentData.method || 'cash',
       bank_account: installmentData.bankMoneyReceived || null,
+      cheque_number: installmentData.chequeNumber || null,
       payment_location: installmentData.country || null,
       notes: installmentData.remarks || '',
       status: 'completed',
@@ -565,6 +625,7 @@ export const StudentProvider = ({ children }) => {
       date: created.payment_date || created.due_date,
       method: created.payment_method,
       bankMoneyReceived: created.bank_account || null,
+      chequeNumber: created.cheque_number || null,
       remarks: created.notes || '',
       status: created.status,
       installmentNumber: created.installment_number,
@@ -606,6 +667,7 @@ export const StudentProvider = ({ children }) => {
         amount: newInstallment.amount,
         paymentMethod: newInstallment.method,
         bankMoneyReceived: newInstallment.bankMoneyReceived,
+        chequeNumber: newInstallment.chequeNumber || null,
         paymentDate: newInstallment.date,
         remarks: newInstallment.remarks,
       },
@@ -752,11 +814,12 @@ export const StudentProvider = ({ children }) => {
 
       const studentPayments = payments.filter((p) => p.studentId === studentId);
       const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
-      const remaining = Math.max(0, student.totalFees - totalPaid);
-      const percentage = student.totalFees > 0 ? Math.round((totalPaid / student.totalFees) * 100) : 0;
+      const netTotal = Math.max(0, (student.totalFees || 0) - (student.discount || 0));
+      const remaining = Math.max(0, netTotal - totalPaid);
+      const percentage = netTotal > 0 ? Math.round((totalPaid / netTotal) * 100) : 0;
 
       return {
-        totalFees: student.totalFees,
+        totalFees: netTotal,
         totalPaid,
         remaining,
         percentage,
@@ -778,7 +841,7 @@ export const StudentProvider = ({ children }) => {
     const totalStudents = filteredStudents.length;
     const activeStudents = filteredStudents.filter((s) => s.status === 'active').length;
     const totalRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-    const totalFees = filteredStudents.reduce((sum, s) => sum + s.totalFees, 0);
+    const totalFees = filteredStudents.reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
     const pendingFees = totalFees - totalRevenue;
 
     // Recent enrollments (last 30 days)
@@ -820,6 +883,7 @@ export const StudentProvider = ({ children }) => {
     getFilteredStudents,
     getFilteredPayments,
     addPayment,
+    updatePayment,
     getPaymentsByStudentId,
     getStudentFeesSummary,
     getStats,
