@@ -109,9 +109,6 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }
             <h1>SHMCT<span>®</span></h1>
           </div>
           <div className="sidebar-header-buttons">
-            <button onClick={onMenuClick} className="sidebar-menu-btn" title="Toggle sidebar">
-              <Menu />
-            </button>
             <button onClick={onToggleCollapse} className="sidebar-collapse-btn" title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
               {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
             </button>

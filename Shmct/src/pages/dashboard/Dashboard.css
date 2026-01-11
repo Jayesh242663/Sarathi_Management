@@ -48,6 +48,12 @@
   z-index: 20;
 }
 
+@media (max-width: 1023px) {
+  .dashboard-user-btn {
+    display: none;
+  }
+}
+
 /* ========================================
    Header Section
    ======================================== */

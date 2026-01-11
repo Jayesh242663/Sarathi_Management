@@ -56,9 +56,27 @@
   color: #ffffff;
 }
 
+.navbar-menu-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.95);
+}
+
+.navbar-menu-btn:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
 .navbar-menu-btn svg {
   width: 20px;
   height: 20px;
+  pointer-events: none;
+}
+
+@media (max-width: 1023px) {
+  .navbar-menu-btn {
+    display: flex !important;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -69,7 +87,7 @@
 
 /* Collapse Button - Desktop Only */
 .navbar-collapse-btn {
-  display: none;
+  display: none !important;
   align-items: center;
   justify-content: center;
   width: 40px;
@@ -264,11 +282,27 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .navbar-user-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+.navbar-user-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(0.98);
+}
+
+.navbar-user-btn:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
 
 .navbar-user-avatar {

@@ -13,7 +13,10 @@ const studentSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email').optional().or(z.literal('')),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits').optional().or(z.literal('')),
+  phone: z.string()
+    .refine(val => !val || val.length >= 10, 'Phone number must be at least 10 digits if provided')
+    .optional()
+    .or(z.literal('')),
   course: z.string().min(1, 'Please select a course'),
   batch: z.string().min(1, 'Please select a batch'),
   admissionDate: z.string().min(1, 'Admission date is required'),

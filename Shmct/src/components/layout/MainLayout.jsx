@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
+import Navbar from './Navbar';
 import './MainLayout.css';
 
 const MainLayout = ({ children }) => {
@@ -17,6 +18,11 @@ const MainLayout = ({ children }) => {
       />
       
       <div className="main-layout-content">
+        <Navbar 
+          onMenuClick={() => setSidebarOpen(true)}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
         <main className="main-layout-main">
           {children}
         </main>

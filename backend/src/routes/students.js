@@ -118,18 +118,19 @@ router.post('/', async (req, res, next) => {
 
     // Map some common frontend keys to DB column names if necessary
     // If the client sent snake_case already, these will be no-ops
+    const phone = payload.phone_number || payload.phone || payload.phoneNumber || '';
     const dbPayload = {
       enrollment_number: payload.enrollment_number || payload.enrollmentNumber,
       first_name: payload.first_name || payload.firstName,
       last_name: payload.last_name || payload.lastName,
-      email: payload.email,
-      phone_number: payload.phone_number || payload.phone || payload.phoneNumber,
+      email: payload.email || null,
+      phone_number: phone ? phone : null, // Convert empty string to null
       batch_id: payload.batch_id,
       course_id: payload.course_id,
       enrollment_date: payload.enrollment_date || payload.admissionDate || payload.enrollmentDate,
-      residential_address: payload.residential_address || payload.address,
-      emergency_contact_name: payload.emergency_contact_name || payload.guardianName,
-      emergency_contact_phone: payload.emergency_contact_phone || payload.guardianPhone,
+      residential_address: payload.residential_address || payload.address || null,
+      emergency_contact_name: payload.emergency_contact_name || payload.guardianName || null,
+      emergency_contact_phone: payload.emergency_contact_phone || payload.guardianPhone || null,
       total_fees: payload.total_fees || payload.totalFees,
       discount: payload.discount !== undefined ? payload.discount : (payload.discount_amount || 0),
       status: payload.status || 'active',
@@ -214,9 +215,34 @@ router.put('/:id', async (req, res, next) => {
     
     console.log('[students] Updating student:', id, updateData);
     
+    // Map frontend keys to database column names for update
+    const dbUpdatePayload = {};
+    
+    // Map phone field to phone_number, converting empty string to null
+    if ('phone' in updateData) {
+      dbUpdatePayload.phone_number = updateData.phone ? updateData.phone : null;
+    } else if ('phone_number' in updateData) {
+      dbUpdatePayload.phone_number = updateData.phone_number ? updateData.phone_number : null;
+    }
+    
+    // Map other fields with underscore notation
+    if ('firstName' in updateData) dbUpdatePayload.first_name = updateData.firstName;
+    if ('lastName' in updateData) dbUpdatePayload.last_name = updateData.lastName;
+    if ('admissionDate' in updateData) dbUpdatePayload.enrollment_date = updateData.admissionDate;
+    if ('totalFees' in updateData) dbUpdatePayload.total_fees = updateData.totalFees;
+    
+    // Pass through other fields as-is (already in snake_case)
+    Object.keys(updateData).forEach(key => {
+      if (!['phone', 'firstName', 'lastName', 'admissionDate', 'totalFees'].includes(key)) {
+        if (!(key in dbUpdatePayload)) {
+          dbUpdatePayload[key] = updateData[key];
+        }
+      }
+    });
+    
     const { data, error } = await sb
       .from('students')
-      .update(updateData)
+      .update(dbUpdatePayload)
       .eq('id', id)
       .select();
     
