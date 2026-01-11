@@ -281,7 +281,15 @@ export async function createPlacementInstallment(installmentData) {
         entity_type: 'PLACEMENT_INSTALLMENT',
         entity_id: installment.id,
         entity_name: `${student.first_name} ${student.last_name} - Placement Payment`,
-        batch_id: (await supabase.from('placements').select('batch_id').eq('id', installmentData.placement_id).single()).data.batch_id,
+        // Safely resolve batch_id for the placement; handle missing placement gracefully
+        batch_id: (await (async () => {
+          const { data: placementRow } = await supabase
+            .from('placements')
+            .select('batch_id')
+            .eq('id', installmentData.placement_id)
+            .maybeSingle();
+          return placementRow?.batch_id || null;
+        })()),
         amount: installmentData.amount,
         transaction_date: installmentData.payment_date,
         details: {

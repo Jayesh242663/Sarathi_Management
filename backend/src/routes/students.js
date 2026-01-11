@@ -287,6 +287,23 @@ router.delete('/:id', async (req, res, next) => {
     const { id } = req.params;
     
     console.log('[students] Deleting student:', id);
+    // First remove dependent placement records to satisfy FK RESTRICT
+    try {
+      const { error: placementsError } = await sb
+        .from('placements')
+        .delete()
+        .eq('student_id', id);
+      if (placementsError) {
+        console.error('[students] Failed to delete placements for student:', id, placementsError);
+        // Surface a clearer error rather than raw 500
+        const err = new Error('Cannot delete student because placements exist or deletion is not permitted');
+        err.status = 409;
+        throw err;
+      }
+    } catch (depErr) {
+      // If RLS or other issues block deletion, stop early
+      return next(depErr);
+    }
     
     const { error } = await sb
       .from('students')
@@ -295,7 +312,10 @@ router.delete('/:id', async (req, res, next) => {
     
     if (error) {
       console.error('[students] Delete error:', error);
-      throw error;
+      // Map FK/RLS errors to a friendlier status code
+      const err = new Error(error.message || 'Failed to delete student');
+      err.status = /foreign key/i.test(error.message || '') ? 409 : 500;
+      throw err;
     }
     
     console.log('[students] Student deleted:', id);

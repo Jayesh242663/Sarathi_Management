@@ -213,10 +213,10 @@ export const StudentProvider = ({ children }) => {
       const batchLookup = new Map(batches.map((b) => [b.id, b]));
       const courseLookup = new Map(courses.map((c) => [c.id, c]));
 
-      const mappedStudents = studentRows.map((s) => mapStudent(s, batchLookup, courseLookup));
-      const mappedPayments = paymentRows.map(mapPayment);
-      const mappedPlacements = placementRows.map((p) => mapPlacement(p, placementInstallments, batchLookup));
-      const mappedAuditLogs = auditLogs.map(mapAudit);
+      const mappedStudents = (studentRows || []).filter(Boolean).map((s) => mapStudent(s, batchLookup, courseLookup));
+      const mappedPayments = (paymentRows || []).filter(Boolean).map(mapPayment);
+      const mappedPlacements = (placementRows || []).filter(Boolean).map((p) => mapPlacement(p, placementInstallments, batchLookup));
+      const mappedAuditLogs = (auditLogs || []).filter(Boolean).map(mapAudit);
 
       console.log('[StudentContext] Mapped data:', { mappedStudents, mappedPayments, mappedPlacements, mappedAuditLogs });
       console.log('[StudentContext] Audit logs count:', mappedAuditLogs.length);

@@ -7,7 +7,6 @@ import {
   MoreVertical, 
   Eye, 
   Edit, 
-  Trash2,
   ChevronLeft,
   ChevronRight,
   Users,
@@ -223,13 +222,6 @@ const StudentList = () => {
                               title="Edit"
                             >
                               <Edit />
-                            </button>
-                            <button
-                              onClick={() => setShowDeleteModal(student)}
-                              className="action-btn delete"
-                              title="Delete"
-                            >
-                              <Trash2 />
                             </button>
                           </>
                         )}
