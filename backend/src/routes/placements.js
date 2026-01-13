@@ -56,10 +56,12 @@ router.post('/', async (req, res, next) => {
     
     console.log('[placements] Creating placement:', placementData);
     
+    // Use upsert to avoid failing on the unique (student_id, batch_id, company_name) constraint
     const { data, error } = await sb
       .from('placements')
-      .insert([placementData])
-      .select();
+      .upsert([placementData], { onConflict: 'student_id,batch_id,company_name' })
+      .select()
+      .single();
     
     if (error) {
       console.error('[placements] Insert error:', error);
@@ -67,7 +69,7 @@ router.post('/', async (req, res, next) => {
     }
     
     console.log('[placements] Placement created:', data);
-    res.status(201).json({ data: data[0] });
+    res.status(201).json({ data });
   } catch (err) {
     console.error('[placements] POST error:', err);
     next(err);

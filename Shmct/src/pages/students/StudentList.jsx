@@ -50,10 +50,10 @@ const StudentList = () => {
   const filteredStudents = useMemo(() => {
     return studentsWithFees.filter((student) => {
       const matchesSearch = 
-        student.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.enrollmentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchQuery.toLowerCase());
+        (student.firstName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (student.lastName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (student.enrollmentNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (student.email || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
       const matchesCourse = courseFilter === 'all' || student.course === courseFilter;
