@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Navbar.css';
-import logo from "../../assets/vite.jpeg";
+import logo from '../../assets/favicon.png';
 
 
 const Navbar = ({ onMenuClick, onToggleCollapse, sidebarCollapsed }) => {
