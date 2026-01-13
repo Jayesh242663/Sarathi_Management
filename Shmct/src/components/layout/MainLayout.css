@@ -6,12 +6,13 @@
    Layout Container
    ======================================== */
 .main-layout {
-  height: 100vh;
-  max-height: 100vh;
+  min-height: 100vh;
+  height: 100%;
   background: #111111;
   display: flex;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 /* ========================================
@@ -21,9 +22,11 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  height: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 /* ========================================
@@ -31,16 +34,36 @@
    ======================================== */
 .main-layout-main {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
-  height: calc(100vh - 72px);
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
+/* Mobile First - Small Screens (< 640px) */
+@media (max-width: 639px) {
+  .main-layout-main {
+    padding: 0.75rem;
+    height: calc(100vh - 72px);
+  }
+}
+
+/* Tablet Screens (640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .main-layout-main {
+    padding: 1rem;
+    height: calc(100vh - 72px);
+  }
+}
+
+/* Desktop Screens (1024px and up) */
 @media (min-width: 1024px) {
   .main-layout-main {
     padding: 1.5rem;
-    height: 100vh;
+    height: calc(100vh - 72px);
   }
 }
 

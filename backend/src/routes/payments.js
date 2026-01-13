@@ -132,6 +132,15 @@ router.put('/:id', async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body || {};
 
+    // Fetch current payment for student info
+    const { data: currentPayment, error: fetchError } = await sb
+      .from('payments')
+      .select('student_id, batch_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const { data, error } = await sb
       .from('payments')
       .update({
@@ -148,6 +157,39 @@ router.put('/:id', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    // Record audit log for payment update (best-effort)
+    try {
+      // Get student name
+      const { data: student } = await sb
+        .from('students')
+        .select('first_name, last_name')
+        .eq('id', currentPayment.student_id)
+        .single();
+
+      await sb.from('audit_logs').insert([
+        {
+          action: 'UPDATE',
+          entity_type: 'PAYMENT',
+          entity_id: id,
+          entity_name: student ? `${student.first_name} ${student.last_name}` : 'Payment',
+          batch_id: currentPayment.batch_id,
+          amount: data.amount,
+          details: {
+            updatedFields: Object.keys(updateData).filter(k => updateData[k] !== undefined),
+            paymentMethod: data.payment_method,
+            bankMoneyReceived: data.bank_account || null,
+            chequeNumber: data.cheque_number || null,
+            receiptNumber: data.receipt_number,
+            remarks: data.notes || '',
+          },
+          transaction_date: data.payment_date,
+        },
+      ]);
+    } catch (auditError) {
+      console.error('[payments] Failed to write audit log (UPDATE):', auditError);
+    }
+
     res.json({ data });
   } catch (err) {
     console.error('[payments] PUT error:', err);
