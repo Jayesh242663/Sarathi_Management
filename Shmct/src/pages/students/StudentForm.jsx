@@ -12,11 +12,11 @@ import './StudentForm.css';
 const studentSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email').optional().or(z.literal('')),
-  phone: z.string()
-    .refine(val => !val || val.length >= 10, 'Phone number must be at least 10 digits if provided')
-    .optional()
-    .or(z.literal('')),
+  email: z.union([z.string().email('Please enter a valid email'), z.literal('')]).nullable().optional().or(z.literal('')),
+  phone: z.union([
+    z.string().refine(val => val.length >= 10, 'Phone number must be at least 10 digits if provided'),
+    z.literal('')
+  ]).nullable().optional().or(z.literal('')),
   course: z.string().min(1, 'Please select a course'),
   batch: z.string().min(1, 'Please select a batch'),
   admissionDate: z.string().min(1, 'Admission date is required'),
@@ -203,7 +203,7 @@ const StudentForm = () => {
             <div className="form-field">
               <label className="form-label">
                 <Mail />
-                Email
+                Email <span className="form-optional">(Optional)</span>
               </label>
               <input
                 {...register('email')}
@@ -219,7 +219,7 @@ const StudentForm = () => {
             <div className="form-field">
               <label className="form-label">
                 <Phone />
-                Phone Number
+                Phone Number <span className="form-optional">(Optional)</span>
               </label>
               <input
                 {...register('phone')}

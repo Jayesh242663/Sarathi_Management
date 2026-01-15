@@ -69,7 +69,7 @@ router.post('/', async (req, res, next) => {
           console.warn('[placement-installments] Could not fetch student batch:', e);
         }
 
-        await sb.from('audit_logs').insert([
+        const { error: auditError } = await sb.from('audit_logs').insert([
           {
             action: 'PLACEMENT_PAYMENT',
             entity_type: 'PLACEMENT',
@@ -88,6 +88,8 @@ router.post('/', async (req, res, next) => {
             transaction_date: created.payment_date || created.due_date || new Date().toISOString().slice(0,10),
           },
         ]);
+
+        if (auditError) throw auditError;
       }
     } catch (auditError) {
       console.error('[placement-installments] Failed to write audit log:', auditError);
@@ -149,7 +151,7 @@ router.put('/:id', async (req, res, next) => {
           console.warn('[placement-installments] Could not fetch student batch:', e);
         }
 
-        await sb.from('audit_logs').insert([
+        const { error: auditError } = await sb.from('audit_logs').insert([
           {
             action: 'UPDATE',
             entity_type: 'PLACEMENT',
@@ -169,6 +171,8 @@ router.put('/:id', async (req, res, next) => {
             transaction_date: updated.payment_date || updated.due_date || new Date().toISOString().slice(0,10),
           },
         ]);
+
+        if (auditError) throw auditError;
       }
     } catch (auditError) {
       console.error('[placement-installments] Failed to write audit log (UPDATE):', auditError);
@@ -228,7 +232,7 @@ router.delete('/:id', async (req, res, next) => {
           console.warn('[placement-installments] Could not fetch student batch:', e);
         }
 
-        await sb.from('audit_logs').insert([
+        const { error: auditError } = await sb.from('audit_logs').insert([
           {
             action: 'DELETE',
             entity_type: 'PLACEMENT',
@@ -245,6 +249,8 @@ router.delete('/:id', async (req, res, next) => {
             transaction_date: installmentToDelete.payment_date || installmentToDelete.due_date || new Date().toISOString().slice(0,10),
           },
         ]);
+
+        if (auditError) throw auditError;
       }
     } catch (auditError) {
       console.error('[placement-installments] Failed to write audit log (DELETE):', auditError);

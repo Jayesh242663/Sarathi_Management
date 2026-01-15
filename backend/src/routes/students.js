@@ -179,7 +179,7 @@ router.post('/', async (req, res, next) => {
     // Write audit log for student creation (best-effort)
     try {
       if (createdStudent) {
-        await sb.from('audit_logs').insert([
+        const { error: auditError } = await sb.from('audit_logs').insert([
           {
             action: 'CREATE',
             entity_type: 'STUDENT',
@@ -194,6 +194,8 @@ router.post('/', async (req, res, next) => {
             transaction_date: new Date().toISOString().slice(0,10),
           },
         ]);
+
+        if (auditError) throw auditError;
       }
     } catch (auditError) {
       console.error('[students] Failed to write audit log (CREATE):', auditError);
@@ -257,7 +259,7 @@ router.put('/:id', async (req, res, next) => {
     try {
       const updated = data?.[0];
       if (updated) {
-        await sb.from('audit_logs').insert([
+        const { error: auditError } = await sb.from('audit_logs').insert([
           {
             action: 'UPDATE',
             entity_type: 'STUDENT',
@@ -269,6 +271,8 @@ router.put('/:id', async (req, res, next) => {
             transaction_date: new Date().toISOString().slice(0,10),
           },
         ]);
+
+        if (auditError) throw auditError;
       }
     } catch (auditError) {
       console.error('[students] Failed to write audit log (UPDATE):', auditError);
@@ -322,7 +326,7 @@ router.delete('/:id', async (req, res, next) => {
 
     // Write audit log for student delete (best-effort)
     try {
-      await sb.from('audit_logs').insert([
+      const { error: auditError } = await sb.from('audit_logs').insert([
         {
           action: 'DELETE',
           entity_type: 'STUDENT',
@@ -334,6 +338,8 @@ router.delete('/:id', async (req, res, next) => {
           transaction_date: new Date().toISOString().slice(0,10),
         },
       ]);
+
+      if (auditError) throw auditError;
     } catch (auditError) {
       console.error('[students] Failed to write audit log (DELETE):', auditError);
     }

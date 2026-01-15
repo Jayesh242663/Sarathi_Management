@@ -149,7 +149,8 @@ const Dashboard = () => {
     students.forEach((student) => {
       const studentPayments = payments.filter((p) => p.studentId === student.id);
       const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
-      const remaining = student.totalFees - totalPaid;
+      const netFees = student.totalFees - (student.discount || 0);
+      const remaining = netFees - totalPaid;
       
       if (remaining <= 0) paid++;
       else if (totalPaid > 0) partial++;
@@ -207,7 +208,8 @@ const Dashboard = () => {
       .map((student) => {
         const studentPayments = payments.filter((p) => p.studentId === student.id);
         const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
-        const remaining = student.totalFees - totalPaid;
+        const netFees = student.totalFees - (student.discount || 0);
+        const remaining = netFees - totalPaid;
         return { ...student, remaining };
       })
       .filter((s) => s.remaining > 0)

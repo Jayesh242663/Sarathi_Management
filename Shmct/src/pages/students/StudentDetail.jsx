@@ -271,6 +271,7 @@ const StudentDetail = () => {
           studentName={`${student.firstName} ${student.lastName}`}
           remainingFees={feesSummary?.remaining || 0}
           payment={editingPayment}
+          studentData={student}
           onClose={() => setShowPaymentForm(false)}
         />
       )}

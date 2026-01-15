@@ -65,3 +65,28 @@ export const NAV_ITEMS = [
   { path: '/fees', label: 'Fees & Payments', icon: 'CreditCard' },
   { path: '/reports', label: 'Reports', icon: 'FileText' },
 ];
+
+// Institution information for receipts
+export const INSTITUTION_INFO = {
+  fullName: 'Sarathi School of Management & Catering Technology',
+  shortName: 'SHMCT',
+  address: 'Off. No.: 8th, 3rd Floor, Nehele Apt., Shiv Mandir Road, Dombivli (East) 421 201.',
+  phone: '0251-2800090 / 9699129153 / 9029043425',
+  email: 'info@sarathishmct.com',
+  website: 'www.sarathishmct.com',
+  logoPath: '/logo.png',
+  approvalText: 'Approved By NCVSTE New Delhi, Recognized By Govt. of India',
+  terms: [
+    'Fees Once Paid will not be Refunded.',
+    'Cheque Bounce Charges are Rs. 1,000/-'
+  ]
+};
+
+// Course options for receipt display
+export const COURSE_OPTIONS_RECEIPT = [
+  { id: 1, label: 'BSC. in Hotel Management.' },
+  { id: 2, label: 'Diploma in Hotel Management' },
+  { id: 3, label: 'International Diploma in Hotel Management' },
+  { id: 4, label: 'Certificate in' },
+  { id: 5, label: 'Other' },
+];

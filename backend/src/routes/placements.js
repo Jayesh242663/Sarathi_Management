@@ -102,7 +102,7 @@ router.put('/:id', async (req, res, next) => {
     try {
       const updated = data?.[0];
       if (updated) {
-        await sb.from('audit_logs').insert([
+        const { error: auditError } = await sb.from('audit_logs').insert([
           {
             action: 'UPDATE',
             entity_type: 'PLACEMENT',
@@ -118,6 +118,8 @@ router.put('/:id', async (req, res, next) => {
             transaction_date: new Date().toISOString().slice(0,10),
           },
         ]);
+
+        if (auditError) throw auditError;
       }
     } catch (auditError) {
       console.error('[placements] Failed to write audit log:', auditError);

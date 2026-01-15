@@ -95,7 +95,7 @@ router.post('/', async (req, res, next) => {
 
     // Record audit log (best-effort)
     try {
-      await sb.from('audit_logs').insert([
+      const { error: auditError } = await sb.from('audit_logs').insert([
         {
           action: 'PAYMENT',
           entity_type: 'PAYMENT',
@@ -113,6 +113,8 @@ router.post('/', async (req, res, next) => {
           transaction_date: paymentDate,
         },
       ]);
+
+      if (auditError) throw auditError;
     } catch (auditError) {
       // Non-fatal; log and continue
       console.error('[payments] Failed to write audit log:', auditError);
@@ -167,7 +169,7 @@ router.put('/:id', async (req, res, next) => {
         .eq('id', currentPayment.student_id)
         .single();
 
-      await sb.from('audit_logs').insert([
+      const { error: auditError } = await sb.from('audit_logs').insert([
         {
           action: 'UPDATE',
           entity_type: 'PAYMENT',
@@ -186,6 +188,8 @@ router.put('/:id', async (req, res, next) => {
           transaction_date: data.payment_date,
         },
       ]);
+
+      if (auditError) throw auditError;
     } catch (auditError) {
       console.error('[payments] Failed to write audit log (UPDATE):', auditError);
     }

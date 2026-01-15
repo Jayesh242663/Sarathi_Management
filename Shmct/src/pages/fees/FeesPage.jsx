@@ -82,6 +82,19 @@ const FeesPage = () => {
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const pendingFees = Math.max(0, totalFees - totalPaid);
     const totalDiscount = students.reduce((sum, s) => sum + (s.discount || 0), 0);
+    
+    // Calculate remaining fees from dropped-out students
+    const droppedOutLoss = students
+      .filter((s) => s.status === 'dropped')
+      .reduce((sum, s) => {
+        const netFees = (s.totalFees || 0) - (s.discount || 0);
+        const studentPayments = payments.filter((p) => p.studentId === s.id);
+        const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
+        const remaining = Math.max(0, netFees - totalPaid);
+        return sum + remaining;
+      }, 0);
+    
+    const totalLoss = totalDiscount + droppedOutLoss;
     const paidCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'paid').length;
     const partialCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'partial').length;
     const pendingCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'pending').length;
@@ -91,6 +104,8 @@ const FeesPage = () => {
       totalPaid, 
       pendingFees, 
       totalDiscount,
+      droppedOutLoss,
+      totalLoss,
       paidCount, 
       partialCount, 
       pendingCount,
@@ -200,8 +215,8 @@ const FeesPage = () => {
               <ArrowRightLeft />
             </div>
             <div>
-              <p className="fees-stat-label">Loss (Discounts)</p>
-              <p className="fees-stat-value purple">{formatCurrency(stats.totalDiscount)}</p>
+              <p className="fees-stat-label">Loss</p>
+              <p className="fees-stat-value purple">{formatCurrency(stats.totalLoss)}</p>
             </div>
           </div>
         </div>
@@ -436,6 +451,7 @@ const FeesPage = () => {
           studentId={selectedStudent.id}
           studentName={`${selectedStudent.firstName} ${selectedStudent.lastName}`}
           remainingFees={selectedStudent.feesSummary?.remaining || 0}
+          studentData={selectedStudent}
           onClose={() => setSelectedStudent(null)}
         />
       )}

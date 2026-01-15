@@ -6,6 +6,8 @@ import { X, IndianRupee, Calendar, CreditCard, FileText, Receipt, Building2 } fr
 import { useStudents } from '../../context/StudentContext';
 import { PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
 import { formatCurrency, formatNumberWithCommas } from '../../utils/formatters';
+import ReceiptModal from '../../components/receipt/ReceiptModal';
+import { generateReceiptData } from '../../services/receiptService';
 import './PaymentForm.css';
 
 const amountSchema = z
@@ -22,19 +24,21 @@ const paymentSchema = z.object({
   amount: amountSchema,
   paymentDate: z.string().min(1, 'Payment date is required'),
   paymentMethod: z.string().min(1, 'Please select a payment method'),
-  bankMoneyReceived: z.string().optional(),
-  chequeNumber: z.string().optional(),
-  remarks: z.string().optional(),
+  bankMoneyReceived: z.string().nullable().optional().or(z.literal('')),
+  chequeNumber: z.string().nullable().optional().or(z.literal('')),
+  remarks: z.string().nullable().optional().or(z.literal('')),
 }).refine((data) => data.paymentMethod !== 'cheque' || (data.chequeNumber && data.chequeNumber.trim().length > 0), {
   path: ['chequeNumber'],
   message: 'Cheque number is required for cheque payments',
 });
 
-const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment }) => {
-  const { addPayment, updatePayment, getFilteredPayments } = useStudents();
+const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, studentData }) => {
+  const { addPayment, updatePayment, getFilteredPayments, students } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState(null);
 
   const isEditing = Boolean(payment);
 
@@ -75,29 +79,64 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment }
       // Clean amount value (remove commas)
       const cleanAmount = parseFloat(data.amount.toString().replace(/,/g, ''));
       
+      const paymentData = {
+        amount: cleanAmount,
+        paymentDate: data.paymentDate,
+        paymentMethod: data.paymentMethod,
+        bankMoneyReceived: data.bankMoneyReceived || null,
+        chequeNumber: data.chequeNumber || null,
+        remarks: data.remarks || '',
+        receiptNumber: payment?.receiptNumber || defaultReceiptNumber,
+      };
+      
       if (isEditing) {
         await updatePayment(payment.id, {
-          amount: cleanAmount,
-          paymentDate: data.paymentDate,
-          paymentMethod: data.paymentMethod,
-          bankMoneyReceived: data.bankMoneyReceived || null,
-          chequeNumber: data.chequeNumber || null,
-          remarks: data.remarks || '',
+          ...paymentData,
           status: payment.status || 'completed',
         });
       } else {
         await addPayment({
+          ...paymentData,
           studentId,
-          amount: cleanAmount,
-          paymentDate: data.paymentDate,
-          paymentMethod: data.paymentMethod,
-          bankMoneyReceived: data.bankMoneyReceived || null,
-          chequeNumber: data.chequeNumber || null,
-          remarks: data.remarks || '',
-          receiptNumber: payment?.receiptNumber || defaultReceiptNumber,
         });
       }
-      onClose();
+      
+      // Get student data for receipt
+      const student = studentData || students.find(s => s.id === studentId);
+      if (!student) {
+        onClose();
+        return;
+      }
+      
+      // Calculate previously paid amount
+      const studentPayments = getFilteredPayments().filter(p => p.studentId === studentId);
+      const previouslyPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0) - cleanAmount;
+      
+      // Generate receipt data
+      const receipt = generateReceiptData(
+        {
+          ...paymentData,
+          payment_date: data.paymentDate,
+          payment_method: data.paymentMethod,
+          receipt_number: payment?.receiptNumber || defaultReceiptNumber,
+          bank_account: data.bankMoneyReceived,
+          cheque_number: data.chequeNumber,
+        },
+        {
+          first_name: student.firstName,
+          last_name: student.lastName,
+          enrollment_number: student.enrollmentNumber,
+          course_name: student.course,
+          batch_name: student.batch,
+          total_fees: student.totalFees,
+          discount: student.discount,
+          paidAmount: previouslyPaid,
+        }
+      );
+      
+      // Show receipt modal
+      setReceiptData(receipt);
+      setShowReceipt(true);
     } catch (error) {
       console.error('Error adding/updating payment:', error);
       setSubmitError(error.message || 'Failed to save payment. Please try again.');
@@ -124,6 +163,18 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment }
       document.body.style.overflow = 'unset';
     };
   }, []);
+
+  // Handle receipt modal close
+  const handleReceiptClose = () => {
+    setShowReceipt(false);
+    setReceiptData(null);
+    onClose(); // Close payment form after receipt is closed
+  };
+
+  // If showing receipt, render receipt modal
+  if (showReceipt && receiptData) {
+    return <ReceiptModal receiptData={receiptData} onClose={handleReceiptClose} />;
+  }
 
   return (
     <div className="payment-modal-wrapper">
