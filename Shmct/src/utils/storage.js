@@ -1,4 +1,7 @@
 // Storage keys
+// NOTE: Tokens stored in localStorage are vulnerable to XSS attacks.
+// Future improvement: Migrate to HttpOnly cookies for better security.
+// This requires backend changes to support cookie-based auth.
 const STORAGE_KEYS = {
   STUDENTS: 'shmct_students',
   PAYMENTS: 'shmct_payments',

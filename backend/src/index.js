@@ -21,15 +21,26 @@ import placementsRouter from './routes/placements.js';
 const app = express();
 const port = process.env.PORT || 3001;
 
-// CORS: restrict to configured origins in production
+// CORS: restrict to configured origins - require explicit allowlist
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.length === 0) return callback(null, true);
+    // Require explicit origin configuration
+    if (allowedOrigins.length === 0) {
+      return callback(new Error('CORS_ORIGIN not configured - all origins blocked'));
+    }
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    // Check if origin is in allowlist
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Reject origin not in allowlist
     callback(new Error('Not allowed by CORS'));
-  }
-}));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 
 // Security headers and gzip
 app.use(helmet());
@@ -46,8 +57,8 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, supabaseConfigured: isSupabaseConfigured });
 });
 
-// Debug endpoint to check loaded routes
-if (process.env.NODE_ENV !== 'production') {
+// Debug endpoint to check loaded routes - ONLY in development
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
   app.get('/api/routes', (req, res) => {
     res.json({
       message: 'Available routes:',

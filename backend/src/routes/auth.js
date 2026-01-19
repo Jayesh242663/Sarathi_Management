@@ -77,7 +77,8 @@ async function ensureUserProfile(userId, email, fullName = '', role = 'auditor')
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    console.log('[auth] Login attempt for:', email);
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) console.log('[auth] Login attempt for:', email);
     
     if (!email || !password) {
       const err = new Error('Email and password are required');
@@ -92,20 +93,21 @@ router.post('/login', async (req, res, next) => {
     });
 
     if (error) {
-      console.error('[auth] Supabase auth error:', error);
-      const err = new Error(error.message);
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (isDev) console.error('[auth] Supabase auth error:', error);
+      const err = new Error(isDev ? error.message : 'Invalid email or password');
       err.status = 401;
       throw err;
     }
 
-    console.log('[auth] User authenticated, fetching profile for:', data.user.id);
+    if (isDev) console.log('[auth] User authenticated, fetching profile for:', data.user.id);
     
     // Get user profile with role
     let profile = await getUserProfile(data.user.id);
 
     // Auto-promote configured super admin emails
     if (isSuperAdminEmail(email)) {
-      console.log('[auth] serviceKeyRole during login:', serviceKeyRole);
+      if (isDev) console.log('[auth] serviceKeyRole during login:', serviceKeyRole);
       const ensuredProfile = await ensureUserProfile(
         data.user.id,
         email,
@@ -115,7 +117,7 @@ router.post('/login', async (req, res, next) => {
       profile = ensuredProfile || profile;
     }
 
-    console.log('[auth] Login successful for:', email);
+    if (isDev) console.log('[auth] Login successful for:', email);
     
     // Get full name from multiple sources with fallback
     const fullName = profile?.full_name || 
@@ -140,7 +142,8 @@ router.post('/login', async (req, res, next) => {
       accessToken: data.session.access_token,
     });
   } catch (err) {
-    console.error('[auth] Login error:', err.message);
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) console.error('[auth] Login error:', err.message);
     next(err);
   }
 });

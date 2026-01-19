@@ -4,11 +4,9 @@ import { DEFAULT_ADMIN } from '../utils/constants';
 import apiService, { setLogoutHandler } from '../services/apiService';
 
 const AuthContext = createContext(null);
-const SUPER_ADMIN_EMAILS = ['jayeshchanne9@gmail.com'];
 
-const normalizeRole = (email, role) => (
-  email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase()) ? 'administrator' : role
-);
+// Role normalization - use role from backend (server-determined)
+const normalizeRole = (email, role) => role;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

@@ -12,9 +12,10 @@ router.use(authenticateToken);
 // Test endpoint to verify Supabase connection
 router.get('/test', async (req, res, next) => {
   try {
-    console.log('[data] /test endpoint called');
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) console.log('[data] /test endpoint called');
     const sb = requireSupabase();
-    console.log('[data] Supabase instance obtained');
+    if (isDev) console.log('[data] Supabase instance obtained');
     
     // Try to fetch batches with detailed logging
     const { data, error, status, statusText } = await sb
@@ -31,11 +32,10 @@ router.get('/test', async (req, res, next) => {
     });
     
     if (error) {
+      const isDev = process.env.NODE_ENV !== 'production';
       return res.status(400).json({
         error: 'Query failed',
-        details: error,
-        url: process.env.SUPABASE_URL,
-        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        ...(isDev && { details: error })
       });
     }
     
@@ -46,12 +46,10 @@ router.get('/test', async (req, res, next) => {
       sample: data?.[0] || null
     });
   } catch (err) {
-    console.error('[data] test error:', err);
+    const isDev = process.env.NODE_ENV !== 'production';
     res.status(500).json({
-      error: err.message,
-      type: err.constructor.name,
-      url: process.env.SUPABASE_URL,
-      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+      error: isDev ? err.message : 'Internal server error',
+      ...(isDev && { type: err.constructor.name })
     });
   }
 });
@@ -59,10 +57,13 @@ router.get('/test', async (req, res, next) => {
 // Authenticated endpoint - requires valid JWT token
 router.get('/snapshot', async (req, res, next) => {
   try {
-    console.log('[data] /snapshot requested at:', new Date().toISOString());
-    console.log('[data] Authenticated user:', req.user?.email);
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log('[data] /snapshot requested at:', new Date().toISOString());
+      console.log('[data] Authenticated user:', req.user?.email);
+    }
     const sb = requireSupabase();
-    console.log('[data] Supabase instance obtained');
+    if (isDev) console.log('[data] Supabase instance obtained');
 
     console.log('[data] Fetching batches...');
     const batchesResult = await sb.from('batches').select('*').order('start_year', { ascending: false });
