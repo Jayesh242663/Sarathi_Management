@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudents } from '../../context/StudentContext';
-import { generateBatches } from '../../utils/constants';
+import { BatchService } from '../../services/apiService';
 import './Sidebar.css';
 
 const navItems = [
@@ -34,17 +34,22 @@ const navItems = [
 
 const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }) => {
   const { logout, user } = useAuth();
-  const { currentBatch, setCurrentBatch, customBatches, addCustomBatch, removeCustomBatch } = useStudents();
+  const { currentBatch, setCurrentBatch, customBatches, addCustomBatch, removeCustomBatch, batches, loadSupabaseData } = useStudents();
   const navigate = useNavigate();
   
   const [showAddBatchModal, setShowAddBatchModal] = useState(false);
   const [newBatchStart, setNewBatchStart] = useState('');
   const [batchError, setBatchError] = useState('');
+  const [isAddingBatch, setIsAddingBatch] = useState(false);
   
-  const generatedBatches = generateBatches();
+  // Convert Supabase batches to dropdown format
+  const supabaseBatches = (batches || []).map((b) => ({
+    value: b.batch_name,
+    label: b.batch_name,
+  }));
   
-  // Combine generated batches with custom batches, avoiding duplicates
-  const allBatches = [...generatedBatches];
+  // Combine Supabase batches with custom batches, avoiding duplicates
+  const allBatches = [...supabaseBatches];
   customBatches.forEach((cb) => {
     if (!allBatches.some((b) => b.value === cb.value)) {
       allBatches.push(cb);
@@ -67,7 +72,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }
     setCurrentBatch(e.target.value);
   };
   
-  const handleAddBatch = () => {
+  const handleAddBatch = async () => {
     setBatchError('');
     const year = parseInt(newBatchStart);
     
@@ -84,9 +89,31 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }
       return;
     }
     
-    addCustomBatch(batchValue);
-    setNewBatchStart('');
-    setShowAddBatchModal(false);
+    try {
+      setIsAddingBatch(true);
+      
+      // Create batch in Supabase
+      await BatchService.create({
+        batch_name: batchValue,
+        start_year: year,
+        end_year: year + 1,
+        is_active: true
+      });
+      
+      // Reload data from Supabase to get the new batch
+      await loadSupabaseData();
+      
+      // Set as current batch
+      setCurrentBatch(batchValue);
+      
+      setNewBatchStart('');
+      setShowAddBatchModal(false);
+    } catch (error) {
+      console.error('Failed to add batch:', error);
+      setBatchError(error.message || 'Failed to add batch. Please try again.');
+    } finally {
+      setIsAddingBatch(false);
+    }
   };
   
   const isCustomBatch = (batchValue) => {
@@ -134,11 +161,14 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }
               </button>
             </div>
             <select 
-              value={currentBatch} 
+              value={currentBatch || 'all'} 
               onChange={handleBatchChange}
               className="batch-select"
             >
               <option value="all">All Batches</option>
+              {allBatches.length === 0 && (
+                <option disabled>No batches available - Add one using + button</option>
+              )}
               {allBatches.map((batch) => (
                 <option key={batch.value} value={batch.value}>
                   {batch.label}
@@ -210,6 +240,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }
                 className="batch-modal-input"
                 min="2000"
                 max="2100"
+                disabled={isAddingBatch}
               />
               {batchError && <p className="batch-modal-error">{batchError}</p>}
             </div>
@@ -217,14 +248,16 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, onMenuClick }
               <button 
                 className="batch-modal-btn cancel"
                 onClick={() => setShowAddBatchModal(false)}
+                disabled={isAddingBatch}
               >
                 Cancel
               </button>
               <button 
                 className="batch-modal-btn confirm"
                 onClick={handleAddBatch}
+                disabled={isAddingBatch}
               >
-                Add Batch
+                {isAddingBatch ? 'Adding...' : 'Add Batch'}
               </button>
             </div>
           </div>

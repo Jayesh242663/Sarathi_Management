@@ -172,9 +172,20 @@ export const StudentProvider = ({ children }) => {
 
   const loadSupabaseData = useCallback(async (retryCount = 0) => {
     try {
+      // Verify authentication before loading data
+      const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+      const user = getFromStorage(STORAGE_KEYS.USER);
+      
+      if (!token || !user) {
+        console.warn('[StudentContext] SECURITY: Attempt to load data without authentication blocked.', 'Token:', !!token, 'User:', !!user);
+        setDataLoadError('Authentication required. Please log in.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setDataLoadError(null);
-      console.log('[StudentContext] Loading data from:', `${API_BASE}/data/snapshot`, `(attempt ${retryCount + 1})`);
+      console.log('[StudentContext] Loading authenticated data for user:', user.email, `(attempt ${retryCount + 1})`);
 
       const response = await fetch(`${API_BASE}/data/snapshot`, {
         method: 'GET',
@@ -285,13 +296,22 @@ export const StudentProvider = ({ children }) => {
   // Load data on mount and when auth token becomes available
   useEffect(() => {
     const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-    if (token) {
-      console.log('[StudentContext] Auth token found, loading data');
+    const user = getFromStorage(STORAGE_KEYS.USER);
+    
+    if (token && user) {
+      console.log('[StudentContext] Authenticated user detected. Loading data for:', user.email);
       loadSupabaseData();
     } else {
-      console.log('[StudentContext] No auth token, skipping data load');
+      console.log('[StudentContext] Not authenticated. Skipping data load. Token:', !!token, 'User:', !!user);
       setLoading(false);
       setDataLoadError(null);
+      // Clear all data if not authenticated
+      setStudents([]);
+      setPayments([]);
+      setPlacements([]);
+      setBatches([]);
+      setCourses([]);
+      setAuditLog([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
@@ -300,10 +320,10 @@ export const StudentProvider = ({ children }) => {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === STORAGE_KEYS.AUTH_TOKEN && e.newValue) {
-        console.log('[StudentContext] Auth token detected, reloading data');
+        console.log('[StudentContext] Auth token detected. Reloading data.');
         loadSupabaseData();
       } else if (e.key === STORAGE_KEYS.AUTH_TOKEN && !e.newValue) {
-        console.log('[StudentContext] Auth token removed, clearing data');
+        console.log('[StudentContext] Auth token removed. Clearing all data.');
         setStudents([]);
         setPayments([]);
         setPlacements([]);
