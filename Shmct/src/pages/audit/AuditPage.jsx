@@ -340,6 +340,21 @@ const AuditPage = () => {
               ? 'Showing ledger for all batches'
               : `Batch ${currentBatch} Ledger`}
           </p>
+          {currentBatch && currentBatch !== 'all' && (
+            <div style={{ 
+              marginTop: '0.5rem', 
+              padding: '0.25rem 0.75rem', 
+              background: 'rgba(59, 130, 246, 0.1)', 
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '6px',
+              display: 'inline-block',
+              fontSize: '0.875rem',
+              color: '#60a5fa'
+            }}>
+              <BookOpen size={14} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+              Filtered by batch: {currentBatch}
+            </div>
+          )}
         </div>
       </div>
 
@@ -362,7 +377,7 @@ const AuditPage = () => {
           </div>
           <div className="summary-content">
             <span className="summary-label">Total Entries</span>
-            <span className="summary-value">{auditLog.length}</span>
+            <span className="summary-value">{filteredAuditLog.length}</span>
           </div>
         </div>
         <div className="summary-card credit">
@@ -459,6 +474,20 @@ const AuditPage = () => {
             Reset
           </button>
         </div>
+        
+        {currentBatch && currentBatch !== 'all' && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem 1rem', 
+            background: 'rgba(59, 130, 246, 0.05)', 
+            border: '1px solid rgba(59, 130, 246, 0.2)',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>
+            💡 <strong>Tip:</strong> Currently showing entries for batch <strong>{currentBatch}</strong>. To view all batches, change the batch selection in the sidebar.
+          </div>
+        )}
       </div>
 
       {/* Ledger Table - Classic accounting format */}

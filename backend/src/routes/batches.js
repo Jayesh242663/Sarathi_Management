@@ -16,7 +16,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await sb
       .from('batches')
       .select('*')
-      .order('start_date', { ascending: false });
+      .order('start_year', { ascending: false });
     if (error) throw error;
     res.json({ data });
   } catch (err) {

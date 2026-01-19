@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import { requireSupabase } from '../config/supabase.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = Router();
 
 console.log('[data] Data router initialized');
+
+// Apply authentication to all data routes
+router.use(authenticateToken);
 
 // Test endpoint to verify Supabase connection
 router.get('/test', async (req, res, next) => {
@@ -52,10 +56,11 @@ router.get('/test', async (req, res, next) => {
   }
 });
 
-// Public endpoint - no auth required for initial data load
+// Authenticated endpoint - requires valid JWT token
 router.get('/snapshot', async (req, res, next) => {
   try {
     console.log('[data] /snapshot requested at:', new Date().toISOString());
+    console.log('[data] Authenticated user:', req.user?.email);
     const sb = requireSupabase();
     console.log('[data] Supabase instance obtained');
 

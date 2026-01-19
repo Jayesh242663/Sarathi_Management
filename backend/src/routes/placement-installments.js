@@ -38,6 +38,36 @@ router.post('/', async (req, res, next) => {
     
     console.log('[placement-installments] Creating installment:', installmentData);
     
+    // Check for duplicate placement installment
+    // Prevent recording the same installment twice (same placement, amount, date)
+    const { data: existingInstallments, error: checkError } = await sb
+      .from('placement_installments')
+      .select('id, payment_date, created_at')
+      .eq('placement_id', installmentData.placement_id)
+      .eq('amount', installmentData.amount)
+      .eq('payment_date', installmentData.payment_date);
+
+    if (checkError) {
+      console.error('[placement-installments] Error checking for duplicates:', checkError);
+      // Don't fail entirely due to duplicate check error
+    } else if (existingInstallments && existingInstallments.length > 0) {
+      // Duplicate found
+      const existingInstallment = existingInstallments[0];
+      console.warn(`[placement-installments] Duplicate installment detected: placement=${installmentData.placement_id}, amount=${installmentData.amount}, date=${installmentData.payment_date}`);
+      return res.status(409).json({
+        error: 'A placement installment with the same amount on the same date already exists',
+        details: {
+          message: 'Duplicate installment payment prevented',
+          existingInstallmentId: existingInstallment.id,
+          existingPaymentDate: existingInstallment.payment_date,
+          existingCreatedAt: existingInstallment.created_at,
+          placementId: installmentData.placement_id,
+          amount: installmentData.amount,
+          paymentDate: installmentData.payment_date,
+        },
+      });
+    }
+    
     const { data, error } = await sb
       .from('placement_installments')
       .insert([installmentData])
@@ -45,6 +75,19 @@ router.post('/', async (req, res, next) => {
     
     if (error) {
       console.error('[placement-installments] Insert error:', error);
+      // Handle unique constraint violation
+      if (error.code === '23505' || error.message.includes('unique')) {
+        console.warn(`[placement-installments] Unique constraint violation: ${error.message}`);
+        return res.status(409).json({
+          error: 'A placement installment with these details already exists (duplicate)',
+          details: {
+            message: 'This installment payment has already been recorded',
+            placementId: installmentData.placement_id,
+            amount: installmentData.amount,
+            paymentDate: installmentData.payment_date,
+          },
+        });
+      }
       throw error;
     }
     

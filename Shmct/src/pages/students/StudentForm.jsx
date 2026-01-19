@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Save, User, Mail, Phone, BookOpen, Calendar, DollarSign } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
-import { COURSES, generateBatches, STUDENT_STATUS } from '../../utils/constants';
+import { COURSES, STUDENT_STATUS } from '../../utils/constants';
 import { generateEnrollmentNumber, formatNumberWithCommas } from '../../utils/formatters';
 import './StudentForm.css';
 
@@ -61,7 +61,7 @@ const StudentForm = () => {
       email: '',
       phone: '',
       course: '',
-      batch: currentBatch !== 'all' ? currentBatch : generateBatches()[0]?.value || '',
+      batch: currentBatch !== 'all' ? currentBatch : batches?.[0]?.batch_name || '',
       admissionDate: new Date().toISOString().split('T')[0],
       status: 'active',
       totalFees: 120000,
@@ -121,10 +121,14 @@ const StudentForm = () => {
     }
   };
 
-  const generatedBatches = generateBatches();
+  // Convert Supabase batches to dropdown format
+  const supabaseBatches = (batches || []).map((b) => ({
+    value: b.batch_name,
+    label: b.batch_name,
+  }));
   
-  // Combine generated batches with custom batches, avoiding duplicates
-  const displayBatches = [...generatedBatches];
+  // Combine Supabase batches with custom batches, avoiding duplicates
+  const displayBatches = [...supabaseBatches];
   customBatches.forEach((cb) => {
     if (!displayBatches.some((b) => b.value === cb.value)) {
       displayBatches.push(cb);

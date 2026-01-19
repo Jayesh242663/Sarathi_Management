@@ -1,0 +1,362 @@
+/* ========================================
+   Payment Error Modal - CA Receipt Style
+   Matching Project Theme
+   ======================================== */
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* ========================================
+   Modal Overlay
+   ======================================== */
+.payment-error-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 60;
+  padding: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  animation: fadeIn 0.2s ease-out;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ========================================
+   Modal Content - Receipt Style
+   ======================================== */
+.payment-error-modal {
+  background: rgba(30, 30, 35, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  max-width: 32rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  -webkit-touch-callout: none;
+  pointer-events: auto;
+  margin-top: 2rem;
+}
+
+.payment-error-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* ========================================
+   Error Header - Ledger Style
+   ======================================== */
+.payment-error-header {
+  position: relative;
+  padding: 1.5rem 1.25rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.payment-error-icon-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.payment-error-icon {
+  width: 32px;
+  height: 32px;
+  color: #f87171;
+  stroke-width: 2.5;
+}
+
+.payment-error-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-error-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.payment-error-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ========================================
+   Error Content
+   ======================================== */
+.payment-error-content {
+  padding: 1.25rem;
+}
+
+.payment-error-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #f87171;
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+.payment-error-message {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #ef4444;
+  border-radius: 0 10px 10px 0;
+}
+
+/* ========================================
+   Existing Payment Info - Ledger Style
+   ======================================== */
+.payment-error-existing {
+  background: rgba(30, 30, 30, 0.8);
+  border-left: 3px solid #fbbf24;
+  margin-bottom: 1.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0 10px 10px 0;
+}
+
+.payment-error-existing-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+}
+
+.payment-error-existing-header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.payment-error-existing-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.payment-error-existing-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.payment-error-existing-value {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin: 0;
+}
+
+/* ========================================
+   Info Section
+   ======================================== */
+.payment-error-info {
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 3px solid #3b82f6;
+  border-radius: 0 10px 10px 0;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.payment-error-info-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #60a5fa;
+  margin: 0 0 0.75rem;
+}
+
+.payment-error-info-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.payment-error-info-list li {
+  margin-bottom: 0.375rem;
+}
+
+.payment-error-info-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   Error Actions
+   ======================================== */
+.payment-error-actions {
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.payment-error-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.payment-error-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.payment-error-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+
+.payment-error-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.payment-error-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.payment-error-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   Responsive Adjustments
+   ======================================== */
+@media (max-width: 768px) {
+  .payment-error-overlay {
+    padding: 0.75rem;
+    padding-top: 1rem;
+    align-items: flex-end;
+  }
+
+  .payment-error-modal {
+    margin-top: 0;
+    border-radius: 20px 20px 0 0;
+    max-height: 95vh;
+  }
+
+  .payment-error-actions {
+    flex-direction: column;
+  }
+
+  .payment-error-btn {
+    width: 100%;
+  }
+
+  .payment-error-title {
+    font-size: 1rem;
+  }
+
+  .payment-error-message {
+    font-size: 0.875rem;
+  }
+}
+
+/* ========================================
+   Scrollbar Styling (Matching Theme)
+   ======================================== */
+.payment-error-modal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.payment-error-modal::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.payment-error-modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.payment-error-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

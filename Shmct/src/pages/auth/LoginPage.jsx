@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useStudents } from '../../context/StudentContext';
 import Toast from '../../components/ui/Toast';
 import './LoginPage.css';
 
@@ -21,6 +22,7 @@ const LoginPage = () => {
   const [showForgotDialog, setShowForgotDialog] = useState(false);
 
   const { login } = useAuth();
+  const { loadSupabaseData } = useStudents();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
@@ -40,6 +42,8 @@ const LoginPage = () => {
     try {
       const result = await login(data.email, data.password);
       if (result && result.success) {
+        // Trigger data load after successful login
+        loadSupabaseData();
         navigate(from, { replace: true });
       } else {
         setError(result?.error || 'Invalid credentials');

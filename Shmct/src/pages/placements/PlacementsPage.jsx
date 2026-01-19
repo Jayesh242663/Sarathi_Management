@@ -163,7 +163,22 @@ const PlacementsPage = () => {
       }));
     } catch (error) {
       console.error('Error adding installment:', error);
-      alert(error.message || 'Failed to add installment. Please try again.');
+      
+      // Handle duplicate installment error
+      if (error.response?.status === 409) {
+        const details = error.response?.data?.details;
+        if (details) {
+          alert(
+            `Duplicate payment detected!\n\n` +
+            `An installment of ₹${amountValue.toLocaleString('en-IN')} on ${currentForm.date} already exists for this placement.\n\n` +
+            `Please verify if this is intentional.`
+          );
+        } else {
+          alert(error.response?.data?.error || 'This installment has already been recorded. Please check existing installments.');
+        }
+      } else {
+        alert(error.message || 'Failed to add installment. Please try again.');
+      }
     }
   };
 

@@ -3,20 +3,8 @@ export const COURSES = [
   { value: 'diploma_hotel_management', label: 'Diploma in Hotel Management' },
 ];
 
-// Batch options (generate dynamically based on current year)
-export const generateBatches = () => {
-  const currentYear = new Date().getFullYear();
-  const batches = [];
-  for (let i = 0; i < 5; i++) {
-    const startYear = currentYear - i;
-    const endYear = startYear + 1;
-    batches.push({
-      value: `${startYear}-${endYear.toString().slice(-2)}`,
-      label: `${startYear}-${endYear.toString().slice(-2)}`,
-    });
-  }
-  return batches;
-};
+// Note: Batches are now loaded from Supabase database dynamically
+// No longer using hardcoded batch generation
 
 // Payment methods
 export const PAYMENT_METHODS = [

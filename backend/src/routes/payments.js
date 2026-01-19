@@ -72,6 +72,36 @@ router.post('/', async (req, res, next) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    // Check for duplicate payments (same student, amount, and date)
+    const { data: existingPayments, error: checkError } = await sb
+      .from('payments')
+      .select('id, receipt_number, created_at')
+      .eq('student_id', studentId)
+      .eq('amount', amount)
+      .eq('payment_date', paymentDate)
+      .eq('status', 'completed');
+
+    if (checkError) {
+      console.error('[payments] Error checking for duplicates:', checkError);
+      // Don't fail the entire request due to duplicate check error
+    } else if (existingPayments && existingPayments.length > 0) {
+      // Duplicate found
+      const existingPayment = existingPayments[0];
+      console.warn(`[payments] Duplicate payment detected: student=${studentId}, amount=${amount}, date=${paymentDate}`);
+      return res.status(409).json({
+        error: 'A payment with the same amount on the same date already exists for this student',
+        details: {
+          message: 'Duplicate payment prevented',
+          existingPaymentId: existingPayment.id,
+          existingReceiptNumber: existingPayment.receipt_number,
+          existingCreatedAt: existingPayment.created_at,
+          studentId,
+          amount,
+          paymentDate,
+        },
+      });
+    }
+
     const payload = {
       student_id: studentId,
       batch_id: batchIdFromPayload || student.batch_id,
@@ -91,7 +121,22 @@ router.post('/', async (req, res, next) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Handle unique constraint violation specifically
+      if (error.code === '23505' || error.message.includes('unique')) {
+        console.warn(`[payments] Unique constraint violation: ${error.message}`);
+        return res.status(409).json({
+          error: 'A payment with these details already exists (duplicate)',
+          details: {
+            message: 'This payment has already been recorded',
+            studentId,
+            amount,
+            paymentDate,
+          },
+        });
+      }
+      throw error;
+    }
 
     // Record audit log (best-effort)
     try {

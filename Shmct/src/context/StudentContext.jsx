@@ -5,6 +5,15 @@ import { getFromStorage, setToStorage, getCurrentAcademicBatch, STORAGE_KEYS } f
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+// Helper to get authentication headers
+const getAuthHeaders = () => {
+  const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
 const StudentContext = createContext(null);
 
 const mapStudent = (student, batchLookup, courseLookup) => {
@@ -96,7 +105,7 @@ export const StudentProvider = ({ children }) => {
   const [auditLog, setAuditLog] = useState([]);
   const [batches, setBatches] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, will load when authenticated
   const [dataLoadError, setDataLoadError] = useState(null);
   const [loadRetryCount, setLoadRetryCount] = useState(0);
   const [currentBatch, setCurrentBatchState] = useState(() => {
@@ -169,14 +178,18 @@ export const StudentProvider = ({ children }) => {
 
       const response = await fetch(`${API_BASE}/data/snapshot`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[StudentContext] Error response:', response.status, errorText);
+        
+        // If 401 Unauthorized, the user needs to log in again
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in again.');
+        }
+        
         throw new Error(`Failed to fetch data from Supabase: ${response.status} ${errorText}`);
       }
 
@@ -269,8 +282,40 @@ export const StudentProvider = ({ children }) => {
     }
   }, []);
 
+  // Load data on mount and when auth token becomes available
   useEffect(() => {
-    loadSupabaseData();
+    const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+    if (token) {
+      console.log('[StudentContext] Auth token found, loading data');
+      loadSupabaseData();
+    } else {
+      console.log('[StudentContext] No auth token, skipping data load');
+      setLoading(false);
+      setDataLoadError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Listen for storage changes (when user logs in from another tab or after login)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === STORAGE_KEYS.AUTH_TOKEN && e.newValue) {
+        console.log('[StudentContext] Auth token detected, reloading data');
+        loadSupabaseData();
+      } else if (e.key === STORAGE_KEYS.AUTH_TOKEN && !e.newValue) {
+        console.log('[StudentContext] Auth token removed, clearing data');
+        setStudents([]);
+        setPayments([]);
+        setPlacements([]);
+        setBatches([]);
+        setCourses([]);
+        setAuditLog([]);
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [loadSupabaseData]);
 
   // Student CRUD operations

@@ -7,6 +7,7 @@ import { useStudents } from '../../context/StudentContext';
 import { PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
 import { formatCurrency, formatNumberWithCommas } from '../../utils/formatters';
 import ReceiptModal from '../../components/receipt/ReceiptModal';
+import PaymentErrorModal from '../../components/payment/PaymentErrorModal';
 import { generateReceiptData } from '../../services/receiptService';
 import './PaymentForm.css';
 
@@ -36,9 +37,11 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
   const { addPayment, updatePayment, getFilteredPayments, students } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [existingReceiptNumber, setExistingReceiptNumber] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const isEditing = Boolean(payment);
 
@@ -95,6 +98,25 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
           status: payment.status || 'completed',
         });
       } else {
+        // Check for duplicate payment on the same date with same amount
+        const existingPayment = payments.find(
+          p => 
+            p.studentId === studentId && 
+            p.amount === cleanAmount && 
+            p.paymentDate === data.paymentDate &&
+            p.status === 'completed'
+        );
+
+        if (existingPayment) {
+          setSubmitError(
+            `A payment of ${formatCurrency(cleanAmount)} on ${data.paymentDate} already exists for this student. ` +
+            `Receipt: ${existingPayment.receiptNumber}. Please verify if this is a duplicate before creating a new entry.`
+          );
+          setShowErrorModal(true);
+          setIsSubmitting(false);
+          return;
+        }
+
         await addPayment({
           ...paymentData,
           studentId,
@@ -139,7 +161,25 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
       setShowReceipt(true);
     } catch (error) {
       console.error('Error adding/updating payment:', error);
-      setSubmitError(error.message || 'Failed to save payment. Please try again.');
+      
+      // Handle duplicate payment error (409 Conflict)
+      if (error.response?.status === 409) {
+        const duplicateDetails = error.response?.data?.details;
+        if (duplicateDetails?.existingReceiptNumber) {
+          setSubmitError(
+            `Duplicate payment detected! A payment of ${formatCurrency(duplicateDetails.amount)} ` +
+            `on ${duplicateDetails.paymentDate} already exists (Receipt: ${duplicateDetails.existingReceiptNumber}). ` +
+            `Please verify if this is intentional.`
+          );
+          setExistingReceiptNumber(duplicateDetails.existingReceiptNumber);
+        } else {
+          setSubmitError(error.response?.data?.error || 'A payment with these details already exists. Please check existing payments.');
+        }
+        setShowErrorModal(true);
+      } else {
+        setSubmitError(error.message || 'Failed to save payment. Please try again.');
+        setShowErrorModal(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -169,6 +209,29 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
     setShowReceipt(false);
     setReceiptData(null);
     onClose(); // Close payment form after receipt is closed
+  };
+
+  // Handle error modal close
+  const handleErrorClose = () => {
+    setShowErrorModal(false);
+    setSubmitError('');
+    setExistingReceiptNumber('');
+  };
+
+  // If showing receipt, render receipt modal
+  if (showReceipt && receiptData) {
+    return <ReceiptModal receiptData={receiptData} onClose={handleReceiptClose} />;
+  }
+
+  // If showing error, render error modal
+  if (showErrorModal && submitError) {
+    return (
+      <PaymentErrorModal
+        error={submitError}
+        existingReceipt={existingReceiptNumber}
+        onClose={handleErrorClose}
+      />
+    )
   };
 
   // If showing receipt, render receipt modal
