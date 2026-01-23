@@ -745,3 +745,42 @@
     font-size: 0.8125rem;
   }
 }
+
+/* ========================================
+   Skeleton Loading
+   ======================================== */
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-60%); }
+  100% { transform: translateX(120%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-text {
+  display: block;
+}
+
+.student-avatar.skeleton {
+  background: rgba(255, 255, 255, 0.08);
+}

@@ -84,13 +84,14 @@ export async function getPlacementWithInstallments(placementId) {
     ?.filter(i => i.status === 'completed')
     .reduce((sum, i) => sum + i.amount, 0) || 0;
 
+  const totalReceived = installmentsReceived;
   const profit = data.institution_cost - data.company_cost;
 
   return {
     ...data,
     profit,
-    amountReceived: installmentsReceived,
-    amountRemaining: Math.max(0, data.institution_cost - installmentsReceived)
+    amountReceived: totalReceived,
+    amountRemaining: Math.max(0, data.institution_cost - totalReceived)
   };
 }
 
@@ -202,9 +203,9 @@ export async function getPlacementStatistics(batchId) {
   };
 
   placements?.forEach(p => {
-    stats.totalProfit += p.institution_cost - p.company_cost;
-    stats.companyCostTotal += p.company_cost;
-    stats.institutionCostTotal += p.institution_cost;
+    stats.totalProfit += (p.institution_cost || 0) - (p.company_cost || 0);
+    stats.companyCostTotal += p.company_cost || 0;
+    stats.institutionCostTotal += (p.institution_cost || 0);
   });
 
   if (stats.totalPlacements > 0) {

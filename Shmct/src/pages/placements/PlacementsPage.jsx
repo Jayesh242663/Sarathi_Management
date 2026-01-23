@@ -15,7 +15,7 @@ const PlacementsPage = () => {
   const [formState, setFormState] = useState({});
   const [selectedInstallment, setSelectedInstallment] = useState(null);
   const [editingCosts, setEditingCosts] = useState(null);
-  const [costForm, setCostForm] = useState({ companyCosting: '', myCosting: '' });
+  const [costForm, setCostForm] = useState({ country: '', companyCosting: '', myCosting: '' });
 
   const formatPreview = (val) => {
     const raw = (val ?? '').toString().replace(/,/g, '').trim();
@@ -37,9 +37,13 @@ const PlacementsPage = () => {
   const placementsWithStudent = useMemo(() => {
     return placements.map((placement) => {
       const student = students.find((s) => s.id === placement.studentId);
-      const totalPaid = (placement.installments || []).reduce((sum, inst) => sum + (inst.amount || 0), 0);
-      const remainingAmount = (placement.myCosting || 0) - totalPaid;
+      const installmentsPaid = (placement.installments || []).reduce((sum, inst) => sum + (inst.amount || 0), 0);
+      const totalPaid = installmentsPaid;
+      const myCosting = placement.myCosting || 0;
+      const remainingAmount = Math.max(0, myCosting - totalPaid);
       const isPlaceholder = !placement.company || placement.companyCosting <= 1;
+      const hasFirstInstallment = (placement.installments || []).length > 0;
+      const needsCostsSetup = hasFirstInstallment && isPlaceholder;
 
       return {
         ...placement,
@@ -50,7 +54,9 @@ const PlacementsPage = () => {
         totalPaid,
         remainingAmount,
         isPlaceholder,
-        collectionPercent: placement.myCosting ? Math.min(100, Math.round((totalPaid / placement.myCosting) * 100)) : 0,
+        hasFirstInstallment,
+        needsCostsSetup,
+        collectionPercent: myCosting ? Math.min(100, Math.round((totalPaid / myCosting) * 100)) : 0,
       };
     });
   }, [placements, students]);
@@ -70,7 +76,6 @@ const PlacementsPage = () => {
       { company: 0, my: 0, remaining: 0, totalInstallments: 0, totalPaid: 0 }
     );
     
-    // Calculate collection percentage
     stats.collectionPercentage = stats.my > 0 ? Math.round((stats.totalPaid / stats.my) * 100) : 0;
     
     return stats;
@@ -82,7 +87,7 @@ const PlacementsPage = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const getForm = (placementId) => formState[placementId] || { amount: '', date: '', method: 'cash', bankMoneyReceived: 'tgsb', chequeNumber: '', country: '', remarks: '' };
+  const getForm = (placementId) => formState[placementId] || { amount: '', date: '', method: 'cash', bankMoneyReceived: 'tgsb', chequeNumber: '', remarks: '' };
 
   const updateForm = (placementId, key, value) => {
     setFormState((prev) => ({
@@ -97,24 +102,30 @@ const PlacementsPage = () => {
   const handleEditCosts = (placement) => {
     setEditingCosts(placement.id);
     setCostForm({
+      country: placement.country || '',
       companyCosting: placement.companyCosting || '',
       myCosting: placement.myCosting || '',
     });
   };
 
   const handleSaveCosts = async (placementId) => {
+    const country = costForm.country || '';
     const companyCosting = Number(costForm.companyCosting.toString().replace(/,/g, ''));
     const myCosting = Number(costForm.myCosting.toString().replace(/,/g, ''));
     
+    if (!country) {
+      alert('Please enter the country');
+      return;
+    }
     if (!companyCosting || companyCosting <= 0 || !myCosting || myCosting <= 0) {
       alert('Please enter valid amounts for both Company Costing and My Costing');
       return;
     }
 
     try {
-      await updatePlacementCosts(placementId, { companyCosting, myCosting });
+      await updatePlacementCosts(placementId, { country, companyCosting, myCosting });
       setEditingCosts(null);
-      setCostForm({ companyCosting: '', myCosting: '' });
+      setCostForm({ country: '', companyCosting: '', myCosting: '' });
     } catch (error) {
       console.error('Error updating costs:', error);
       alert(error.message || 'Failed to update costs. Please try again.');
@@ -123,7 +134,7 @@ const PlacementsPage = () => {
 
   const handleCancelEditCosts = () => {
     setEditingCosts(null);
-    setCostForm({ companyCosting: '', myCosting: '' });
+    setCostForm({ country: '', companyCosting: '', myCosting: '' });
   };
 
   const handleAddInstallment = async (placementId) => {
@@ -144,11 +155,11 @@ const PlacementsPage = () => {
         method: currentForm.method || 'cash',
         bankMoneyReceived: currentForm.bankMoneyReceived || 'tgsb',
         chequeNumber: currentForm.chequeNumber || null,
-        country: currentForm.country || '',
+        country: currentForm.country || '', // Will be set in costs step
         remarks: currentForm.remarks || '',
       });
 
-      // Keep country for subsequent payments, clear other fields
+      // Clear form after successful installment
       setFormState((prev) => ({
         ...prev,
         [placementId]: { 
@@ -157,10 +168,13 @@ const PlacementsPage = () => {
           method: 'cash', 
           bankMoneyReceived: 'tgsb', 
           chequeNumber: '',
-          country: currentForm.country, 
+          country: '', 
           remarks: '' 
         },
       }));
+      
+      // Auto-expand to show confirmation and next step
+      setExpandedId(placementId);
     } catch (error) {
       console.error('Error adding installment:', error);
       
@@ -283,7 +297,17 @@ const PlacementsPage = () => {
                       </div>
                     </td>
                     <td data-label="Country">
-                      <span className="country-chip">{placement.country || '-'}</span>
+                      {editingCosts === placement.id ? (
+                        <input
+                          type="text"
+                          className="cost-input"
+                          value={costForm.country}
+                          onChange={(e) => setCostForm({...costForm, country: e.target.value})}
+                          placeholder="Country"
+                        />
+                      ) : (
+                        <span className="country-chip">{placement.country || '-'}</span>
+                      )}
                     </td>
                     <td data-label="Company Costing" className="number">
                       {editingCosts === placement.id ? (
@@ -321,7 +345,7 @@ const PlacementsPage = () => {
                         placement.isPlaceholder ? (
                           <span className="placeholder-text">Not set</span>
                         ) : (
-                          formatCurrency(placement.myCosting)
+                          formatCurrency(placement.myCosting || 0)
                         )
                       )}
                     </td>
@@ -351,7 +375,12 @@ const PlacementsPage = () => {
                         </div>
                       ) : (
                         <div className="action-buttons">
-                          {canEdit() && placement.isPlaceholder && (
+                          {canEdit() && !placement.hasFirstInstallment && (
+                            <button className="btn-add-first" onClick={() => toggleExpand(placement.id)} title="Add First Installment">
+                              <Plus size={16} /> First Payment
+                            </button>
+                          )}
+                          {canEdit() && placement.needsCostsSetup && (
                             <button className="btn-edit-costs" onClick={() => handleEditCosts(placement)} title="Set Costs">
                               <Edit2 size={16} /> Set Costs
                             </button>
@@ -406,20 +435,6 @@ const PlacementsPage = () => {
                                 <span>Add New Installment</span>
                               </div>
                               <div className="add-installment-fields">
-                                {placement.installments.length === 0 && (
-                                  <div className="form-group">
-                                    <label className="form-label">
-                                      <MapPin size={16} />
-                                      Country (first payment)
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g., USA, Canada"
-                                      value={getForm(placement.id).country}
-                                      onChange={(e) => updateForm(placement.id, 'country', e.target.value)}
-                                    />
-                                  </div>
-                                )}
                                 <div className="form-group">
                                   <div className="form-label-row">
                                     <label className="form-label">
@@ -561,6 +576,22 @@ const PlacementsPage = () => {
 
                 <div className="placement-card-body">
                   <div className="placement-card-grid two-by-two">
+                    {editingCosts === placement.id && (
+                      <div className="placement-card-stat full">
+                        <div className="label-row">
+                          <span className="label">Country *</span>
+                        </div>
+                        <input
+                          type="text"
+                          className="cost-input"
+                          value={costForm.country}
+                          onChange={(e) => {
+                            setCostForm({ ...costForm, country: e.target.value });
+                          }}
+                          placeholder="e.g., USA, Canada"
+                        />
+                      </div>
+                    )}
                     <div className="placement-card-stat">
                       <div className="label-row">
                         <span className="label">Company Costing</span>
@@ -600,7 +631,7 @@ const PlacementsPage = () => {
                           placeholder="My Cost"
                         />
                       ) : (
-                        <span className="value">{placement.isPlaceholder ? 'Not set' : formatCurrency(placement.myCosting)}</span>
+                        <span className="value">{placement.isPlaceholder ? 'Not set' : formatCurrency((placement.myCosting || 0))}</span>
                       )}
                     </div>
                     <div className="placement-card-stat">
@@ -634,7 +665,12 @@ const PlacementsPage = () => {
                     </>
                   ) : (
                     <>
-                      {canEdit() && placement.isPlaceholder && (
+                      {canEdit() && !placement.hasFirstInstallment && (
+                        <button className="btn-add-first" onClick={() => toggleExpand(placement.id)} title="Add First Installment">
+                          <Plus size={16} /> First Payment
+                        </button>
+                      )}
+                      {canEdit() && placement.needsCostsSetup && (
                         <button className="btn-edit-costs" onClick={() => handleEditCosts(placement)} title="Set Costs">
                           <Edit2 size={16} /> Set Costs
                         </button>
@@ -687,20 +723,6 @@ const PlacementsPage = () => {
                           <span>Add New Installment</span>
                         </div>
                         <div className="add-installment-fields">
-                          {placement.installments.length === 0 && (
-                            <div className="form-group">
-                              <label className="form-label">
-                                <MapPin size={16} />
-                                Country (first payment)
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g., USA, Canada"
-                                value={getForm(placement.id).country}
-                                onChange={(e) => updateForm(placement.id, 'country', e.target.value)}
-                              />
-                            </div>
-                          )}
                           <div className="form-group">
                             <div className="form-label-row">
                               <label className="form-label">

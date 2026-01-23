@@ -743,19 +743,19 @@ export const StudentProvider = ({ children }) => {
   }, [students, placements, logAuditEvent]);
 
   // Update placement costs (Company Costing and My Costing)
-  const updatePlacementCosts = useCallback(async (placementId, { companyCosting, myCosting }) => {
+  const updatePlacementCosts = useCallback(async (placementId, { country = '', companyCosting, myCosting }) => {
     const placement = placements.find((p) => p.id === placementId);
     if (!placement) {
       throw new Error('Placement not found');
     }
 
-    console.log('[updatePlacementCosts] Updating placement:', placementId, { companyCosting, myCosting });
+    console.log('[updatePlacementCosts] Updating placement:', placementId, { country, companyCosting, myCosting });
 
     const payload = {
       company_cost: companyCosting,
       institution_cost: myCosting,
+      placement_location: country || 'TBD',
       company_name: placement.company || 'To Be Determined',
-      placement_location: placement.country || 'TBD',
     };
 
     console.log('[updatePlacementCosts] Payload:', payload);
@@ -776,11 +776,11 @@ export const StudentProvider = ({ children }) => {
         if (p.id === placementId) {
           const updatedPlacement = {
             ...p,
+            country: updated.placement_location || country,
             companyCosting: Number(updated.company_cost || 0),
             myCosting: Number(updated.institution_cost || 0),
             profit: Number((updated.institution_cost || 0) - (updated.company_cost || 0)),
             company: updated.company_name,
-            country: updated.placement_location,
           };
           console.log('[updatePlacementCosts] Updated placement in state:', updatedPlacement);
           return updatedPlacement;
@@ -798,6 +798,7 @@ export const StudentProvider = ({ children }) => {
       'PLACEMENT',
       placementId,
       {
+        country,
         companyCosting,
         myCosting,
       },
