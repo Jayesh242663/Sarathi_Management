@@ -15,6 +15,7 @@ import batchesRouter from './routes/batches.js';
 import studentsRouter from './routes/students.js';
 import dataRouter from './routes/data.js';
 import paymentsRouter from './routes/payments.js';
+import expensesRouter from './routes/expenses.js';
 import placementInstallmentsRouter from './routes/placement-installments.js';
 import placementsRouter from './routes/placements.js';
 
@@ -71,6 +72,7 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging')
         '/api/auth/register',
         '/api/students',
         '/api/payments',
+        '/api/expenses',
         '/api/placements',
         '/api/placement-installments',
         '/api/courses',
@@ -93,6 +95,7 @@ app.use('/api/courses', coursesRouter);
 app.use('/api/batches', batchesRouter);
 app.use('/api/students', studentsRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/expenses', expensesRouter);
 app.use('/api/placements', placementsRouter);
 app.use('/api/placement-installments', placementInstallmentsRouter);
 app.use('/api/data', dataRouter);

@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   Menu,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Wallet
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudents } from '../../context/StudentContext';
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/students', label: 'Students', icon: Users },
   { path: '/fees', label: 'Fees & Payments', icon: CreditCard },
+  { path: '/expenses', label: 'Expenses', icon: Wallet },
   { path: '/reports', label: 'Reports', icon: FileText },
   { path: '/placements', label: 'Placements', icon: Briefcase },
   { path: '/audit', label: 'Audit Log', icon: ClipboardList },

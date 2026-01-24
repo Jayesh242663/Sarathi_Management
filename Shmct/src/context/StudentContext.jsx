@@ -98,9 +98,27 @@ const mapAudit = (entry) => ({
   amount: entry.amount ? Number(entry.amount) : undefined,
 });
 
+const mapExpense = (expense) => ({
+  id: expense.id,
+  name: expense.name,
+  date: expense.date,
+  paymentMethod: expense.payment_method || expense.paymentMethod,
+  bankMoneyReceived: expense.bank_account || expense.bankMoneyReceived || null,
+  chequeNumber: expense.cheque_number || expense.chequeNumber || '',
+  amount: Number(expense.amount || 0),
+  transactionType: expense.transaction_type || expense.transactionType,
+  category: expense.category,
+  remarks: expense.remarks || '',
+  isSelfTransaction: expense.is_self_transaction || expense.isSelfTransaction || false,
+  batchId: expense.batch_id || expense.batchId,
+  createdAt: expense.created_at || expense.createdAt,
+  updatedAt: expense.updated_at || expense.updatedAt,
+});
+
 export const StudentProvider = ({ children }) => {
   const [students, setStudents] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [placements, setPlacements] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -217,6 +235,25 @@ export const StudentProvider = ({ children }) => {
         auditLogs = [],
       } = data;
 
+      // Fetch expenses separately
+      let expenses = [];
+      try {
+        const expensesResponse = await fetch(`${API_BASE}/expenses?limit=500`, {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        });
+        if (expensesResponse.ok) {
+          const expensesData = await expensesResponse.json();
+          expenses = expensesData.data || [];
+          console.log('[StudentContext] Expenses loaded:', expenses.length);
+        } else {
+          console.warn('[StudentContext] Failed to load expenses:', expensesResponse.status);
+        }
+      } catch (expenseError) {
+        console.warn('[StudentContext] Error loading expenses:', expenseError);
+        // Continue loading other data even if expenses fail
+      }
+
       console.log('[StudentContext] Extracted arrays:', {
         batchesCount: batches.length,
         coursesCount: courses.length,
@@ -225,6 +262,7 @@ export const StudentProvider = ({ children }) => {
         placementsCount: placementRows.length,
         installmentsCount: placementInstallments.length,
         auditLogsCount: auditLogs.length,
+        expensesCount: expenses.length,
       });
 
       if (batches.length === 0) {
@@ -248,6 +286,13 @@ export const StudentProvider = ({ children }) => {
       setStudents(mappedStudents);
       setPayments(mappedPayments);
       setPlacements(mappedPlacements);
+      
+      // Deduplicate expenses by ID
+      const uniqueExpenses = Array.from(
+        new Map(expenses.map((exp) => [exp.id, exp])).values()
+      );
+      setExpenses(uniqueExpenses);
+      
       setBatches(batches);
       setCourses(courses);
       setAuditLog(mappedAuditLogs);
@@ -873,6 +918,140 @@ export const StudentProvider = ({ children }) => {
     [payments]
   );
 
+  // Expense operations
+  const addExpense = useCallback(async (expenseData) => {
+    try {
+      // Convert batch name to batch ID
+      let batchId = null;
+      if (currentBatch && currentBatch !== 'all') {
+        const batch = batches.find((b) => b.batch_name === currentBatch);
+        batchId = batch ? batch.id : null;
+      }
+
+      const response = await fetch(`${API_BASE}/expenses`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ...expenseData,
+          batchId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to add expense: ${response.statusText}`);
+      }
+
+      const { data } = await response.json();
+
+      // Add the new expense, ensuring no duplicates by ID
+      setExpenses((prev) => {
+        const expenseIds = new Set(prev.map((e) => e.id));
+        if (expenseIds.has(data.id)) {
+          // Expense already exists, replace it
+          return prev.map((e) => (e.id === data.id ? data : e));
+        }
+        // New expense, add it
+        return [data, ...prev];
+      });
+
+      logAuditEvent(
+        'CREATE',
+        'EXPENSE',
+        data.id,
+        {
+          name: data.name,
+          amount: data.amount,
+          date: data.date,
+          transactionType: data.transaction_type,
+        },
+        data.name
+      );
+
+      return data;
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      throw error;
+    }
+  }, [currentBatch, batches, logAuditEvent]);
+
+  const updateExpense = useCallback(async (id, expenseData) => {
+    try {
+      const response = await fetch(`${API_BASE}/expenses/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(expenseData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update expense: ${response.statusText}`);
+      }
+
+      const { data } = await response.json();
+
+      setExpenses((prev) => prev.map((exp) => (exp.id === id ? data : exp)));
+
+      logAuditEvent(
+        'UPDATE',
+        'EXPENSE',
+        id,
+        {
+          name: data.name,
+          amount: data.amount,
+          date: data.date,
+        },
+        data.name
+      );
+
+      return data;
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      throw error;
+    }
+  }, [logAuditEvent]);
+
+  const deleteExpense = useCallback(async (id) => {
+    try {
+      const expense = expenses.find((exp) => exp.id === id);
+      if (!expense) return;
+
+      const response = await fetch(`${API_BASE}/expenses/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete expense: ${response.statusText}`);
+      }
+
+      setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+
+      logAuditEvent(
+        'DELETE',
+        'EXPENSE',
+        id,
+        { name: expense.name, amount: expense.amount },
+        expense.name
+      );
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      throw error;
+    }
+  }, [expenses, logAuditEvent]);
+
+  const getFilteredExpenses = useCallback(
+    (batch = currentBatch) => {
+      if (batch === 'all') return expenses;
+      
+      // Convert batch name to batch ID
+      const batchObj = batches.find((b) => b.batch_name === batch);
+      const batchId = batchObj ? batchObj.id : null;
+      
+      if (!batchId) return [];
+      return expenses.filter((exp) => exp.batch_id === batchId);
+    },
+    [expenses, currentBatch, batches]
+  );
+
   const getStudentFeesSummary = useCallback(
     (studentId) => {
       const student = students.find((s) => s.id === studentId);
@@ -904,11 +1083,28 @@ export const StudentProvider = ({ children }) => {
       return student && (batch === 'all' || student.batch === batch);
     });
     
+    // Filter placements by batch
+    const filteredPlacements = batch === 'all' ? placements : placements.filter(p => p.batch === batch);
+    
     const totalStudents = filteredStudents.length;
     const activeStudents = filteredStudents.filter((s) => s.status === 'active').length;
-    const totalRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    // Calculate revenue from student fee payments
+    const feeRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    // Calculate revenue from placement installments
+    const placementRevenue = filteredPlacements.reduce((sum, placement) => {
+      const installmentTotal = (placement.installments || []).reduce((instSum, inst) => {
+        return instSum + (inst.amount || 0);
+      }, 0);
+      return sum + installmentTotal;
+    }, 0);
+    
+    // Total revenue includes both fee payments and placement installments
+    const totalRevenue = feeRevenue + placementRevenue;
+    
     const totalFees = filteredStudents.reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
-    const pendingFees = totalFees - totalRevenue;
+    const pendingFees = totalFees - feeRevenue; // Only student fees affect pending fees
 
     // Recent enrollments (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -924,13 +1120,14 @@ export const StudentProvider = ({ children }) => {
       totalFees,
       pendingFees,
       recentEnrollments,
-      collectionRate: totalFees > 0 ? Math.round((totalRevenue / totalFees) * 100) : 0,
+      collectionRate: totalFees > 0 ? Math.round((feeRevenue / totalFees) * 100) : 0,
     };
-  }, [students, payments, currentBatch]);
+  }, [students, payments, placements, currentBatch]);
 
   const value = {
     students,
     payments,
+    expenses,
     auditLog,
     loading,
     dataLoadError,
@@ -951,6 +1148,10 @@ export const StudentProvider = ({ children }) => {
     addPayment,
     updatePayment,
     getPaymentsByStudentId,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    getFilteredExpenses,
     getStudentFeesSummary,
     getStats,
     getAuditLog,

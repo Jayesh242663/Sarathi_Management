@@ -13,6 +13,7 @@ const StudentList = lazy(() => import('./pages/students/StudentList'));
 const StudentForm = lazy(() => import('./pages/students/StudentForm'));
 const StudentDetail = lazy(() => import('./pages/students/StudentDetail'));
 const FeesPage = lazy(() => import('./pages/fees/FeesPage'));
+const ExpensesPage = lazy(() => import('./pages/expenses/ExpensesPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const AuditPage = lazy(() => import('./pages/audit/AuditPage'));
 const PlacementsPage = lazy(() => import('./pages/placements/PlacementsPage'));
@@ -91,6 +92,17 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <FeesPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/expenses"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <ExpensesPage />
                   </MainLayout>
                 </ProtectedRoute>
               }
