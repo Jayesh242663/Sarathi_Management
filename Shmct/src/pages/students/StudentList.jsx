@@ -19,7 +19,7 @@ import { COURSES, STUDENT_STATUS } from '../../utils/constants';
 import './StudentList.css';
 
 const StudentList = () => {
-  const { payments, deleteStudent, getFilteredStudents, currentBatch } = useStudents();
+  const { payments, deleteStudent, getFilteredStudents, currentBatch, loading } = useStudents();
   const { canEdit } = useAuth();
   const navigate = useNavigate();
   
@@ -87,6 +87,46 @@ const StudentList = () => {
     return <span className="fee-status-pending">Pending</span>;
   };
 
+  const renderSkeletonRows = (count = 8) => {
+    return Array.from({ length: count }).map((_, idx) => (
+      <tr key={`skeleton-${idx}`} className="table-row">
+        <td data-label="Student">
+          <div className="student-cell">
+            <div className="student-avatar skeleton" />
+            <div className="student-info">
+              <div className="skeleton skeleton-text" style={{ width: '160px', height: '14px' }} />
+              <div className="skeleton skeleton-text" style={{ width: '220px', height: '12px', marginTop: '6px' }} />
+            </div>
+          </div>
+        </td>
+        <td data-label="Enrollment">
+          <div className="skeleton skeleton-text" style={{ width: '120px', height: '12px' }} />
+        </td>
+        <td data-label="Course">
+          <div className="skeleton skeleton-text" style={{ width: '100px', height: '12px' }} />
+        </td>
+        <td data-label="Status">
+          <div className="skeleton skeleton-text" style={{ width: '70px', height: '12px' }} />
+        </td>
+        <td data-label="Fees Paid">
+          <div className="skeleton skeleton-text" style={{ width: '80px', height: '12px' }} />
+        </td>
+        <td data-label="Remaining">
+          <div className="skeleton skeleton-text" style={{ width: '80px', height: '12px' }} />
+        </td>
+        <td data-label="Fee Status">
+          <div className="skeleton skeleton-text" style={{ width: '90px', height: '12px' }} />
+        </td>
+        <td data-label="Actions">
+          <div className="action-buttons">
+            <div className="skeleton" style={{ width: '28px', height: '28px', borderRadius: '8px' }} />
+            <div className="skeleton" style={{ width: '28px', height: '28px', borderRadius: '8px' }} />
+          </div>
+        </td>
+      </tr>
+    ));
+  };
+
   return (
     <div className="students-page">
       {/* Header */}
@@ -145,7 +185,7 @@ const StudentList = () => {
 
       {/* Results count */}
       <div className="results-count">
-        <p>Showing {filteredStudents.length} students</p>
+        <p>{loading ? 'Loading students…' : `Showing ${filteredStudents.length} students`}</p>
       </div>
 
       {/* Table */}
@@ -165,7 +205,9 @@ const StudentList = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.length === 0 ? (
+              {loading ? (
+                renderSkeletonRows(8)
+              ) : filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="empty-state">
                     <Users className="empty-icon" />

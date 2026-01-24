@@ -237,12 +237,27 @@ const ReportsPage = () => {
 
       months.push({
         name: monthName,
+        year: year,
         revenue,
         payments: monthPayments.length,
         enrollments,
       });
 
       cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    // Check if there are duplicate month names (spans multiple years)
+    const monthCounts = {};
+    months.forEach(m => {
+      monthCounts[m.name] = (monthCounts[m.name] || 0) + 1;
+    });
+    const hasDuplicates = Object.values(monthCounts).some(count => count > 1);
+    
+    // If duplicates exist, append year to month labels
+    if (hasDuplicates) {
+      months.forEach(m => {
+        m.name = `${m.name} '${String(m.year).slice(-2)}`;
+      });
     }
 
     return months;
