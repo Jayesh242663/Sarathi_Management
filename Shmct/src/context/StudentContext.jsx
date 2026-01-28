@@ -938,7 +938,16 @@ export const StudentProvider = ({ children }) => {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to add expense: ${response.statusText}`);
+        const errorData = await response.json();
+        
+        // Handle duplicate entry error specifically
+        if (response.status === 409 && errorData.code === 'DUPLICATE_EXPENSE') {
+          const error = new Error(errorData.message || 'This expense already exists');
+          error.code = 'DUPLICATE_EXPENSE';
+          throw error;
+        }
+        
+        throw new Error(errorData.error || `Failed to add expense: ${response.statusText}`);
       }
 
       const { data } = await response.json();
@@ -1089,7 +1098,7 @@ export const StudentProvider = ({ children }) => {
     const totalStudents = filteredStudents.length;
     const activeStudents = filteredStudents.filter((s) => s.status === 'active').length;
     
-    // Calculate revenue from student fee payments
+    // Calculate revenue from student fee payments (includes all students)
     const feeRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
     
     // Calculate revenue from placement installments
@@ -1103,7 +1112,10 @@ export const StudentProvider = ({ children }) => {
     // Total revenue includes both fee payments and placement installments
     const totalRevenue = feeRevenue + placementRevenue;
     
-    const totalFees = filteredStudents.reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
+    // Calculate total fees only from active students (exclude dropped-out)
+    const totalFees = filteredStudents
+      .filter((s) => s.status !== 'dropped')
+      .reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
     const pendingFees = totalFees - feeRevenue; // Only student fees affect pending fees
 
     // Recent enrollments (last 30 days)

@@ -146,16 +146,19 @@ const Dashboard = () => {
   const feeStatusData = useMemo(() => {
     let paid = 0, partial = 0, pending = 0;
     
-    students.forEach((student) => {
-      const studentPayments = payments.filter((p) => p.studentId === student.id);
-      const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
-      const netFees = student.totalFees - (student.discount || 0);
-      const remaining = netFees - totalPaid;
-      
-      if (remaining <= 0) paid++;
-      else if (totalPaid > 0) partial++;
-      else pending++;
-    });
+    // Only count active students in fee status (exclude dropped-out)
+    students
+      .filter((student) => student.status !== 'dropped')
+      .forEach((student) => {
+        const studentPayments = payments.filter((p) => p.studentId === student.id);
+        const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
+        const netFees = student.totalFees - (student.discount || 0);
+        const remaining = netFees - totalPaid;
+        
+        if (remaining <= 0) paid++;
+        else if (totalPaid > 0) partial++;
+        else pending++;
+      });
     
     return [
       { name: 'Paid', value: paid, color: '#22c55e' },

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar, CreditCard, IndianRupee, User, DollarSign, FileText, Save, X } from 'lucide-react';
+import { Calendar, CreditCard, IndianRupee, User, DollarSign, FileText, Save, X, AlertCircle } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
 import { formatNumberWithCommas } from '../../utils/formatters';
@@ -42,6 +42,9 @@ const ExpenseForm = ({ onClose, expense, onSubmitSuccess }) => {
   const { addExpense, updateExpense } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const isEditing = Boolean(expense);
 
@@ -106,37 +109,80 @@ const ExpenseForm = ({ onClose, expense, onSubmitSuccess }) => {
       onClose();
     } catch (error) {
       console.error('Error submitting expense:', error);
-      setSubmitError(error.message || 'Failed to save expense');
+      
+      // Handle duplicate entry error
+      if (error.code === 'DUPLICATE_EXPENSE' || error.message?.includes('Duplicate')) {
+        setErrorTitle('Duplicate Expense');
+        setErrorMessage(
+          'An expense with the same name, date, amount, and payment method already exists for this batch.\n\nPlease verify your records or modify one of these details (name, date, amount, or payment method) to add a different entry.'
+        );
+        setShowErrorModal(true);
+      } else {
+        setErrorTitle('Error');
+        setErrorMessage(error.message || 'Failed to save expense');
+        setShowErrorModal(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="expense-modal-overlay" onClick={onClose}>
-      <div className="expense-modal-wide" onClick={(e) => e.stopPropagation()}>
-        {/* Modal Header */}
-        <div className="expense-modal-header">
-          <h2 className="expense-modal-title">
-            {isEditing ? 'Edit Expense' : 'Add Expense'}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="expense-modal-close"
-            aria-label="Close"
-          >
-            <X />
-          </button>
-        </div>
-
-        {/* Form Container */}
-        <form onSubmit={handleSubmit(onSubmit)} className="expense-form-wide">
-          {submitError && (
-            <div className="expense-error-banner">
-              {submitError}
+    <>
+      {/* Error Modal Popup */}
+      {showErrorModal && (
+        <div className="expense-error-modal-overlay" onClick={() => setShowErrorModal(false)}>
+          <div className="expense-error-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="expense-error-modal-header">
+              <h3 className="expense-error-modal-title">
+                <AlertCircle size={20} />
+                {errorTitle}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowErrorModal(false)}
+                className="expense-error-modal-close"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
             </div>
-          )}
+            <div className="expense-error-modal-body">
+              <p className="expense-error-modal-message">{errorMessage}</p>
+            </div>
+            <div className="expense-error-modal-footer">
+              <button
+                type="button"
+                onClick={() => setShowErrorModal(false)}
+                className="expense-error-modal-btn"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Form Modal */}
+      <div className="expense-modal-overlay" onClick={onClose}>
+        <div className="expense-modal-wide" onClick={(e) => e.stopPropagation()}>
+          {/* Modal Header */}
+          <div className="expense-modal-header">
+            <h2 className="expense-modal-title">
+              {isEditing ? 'Edit Expense' : 'Add Expense'}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="expense-modal-close"
+              aria-label="Close"
+            >
+              <X />
+            </button>
+          </div>
+
+          {/* Form Container */}
+          <form onSubmit={handleSubmit(onSubmit)} className="expense-form-wide">
 
           {/* Basic Information Section */}
           <div className="expense-form-section">
@@ -362,6 +408,7 @@ const ExpenseForm = ({ onClose, expense, onSubmitSuccess }) => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 

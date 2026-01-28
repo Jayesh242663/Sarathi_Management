@@ -312,9 +312,13 @@ const ReportsPage = () => {
           students: 0
         };
       }
-      courseData[courseName].totalFees += (student.totalFees || 0);
+      // Only count active students in total fees (exclude dropped-out)
+      if (student.status !== 'dropped') {
+        courseData[courseName].totalFees += (student.totalFees || 0);
+        courseData[courseName].pending += Math.max(0, (student.totalFees || 0) - collected);
+      }
+      // Collected includes payments from all students (including dropped-out)
       courseData[courseName].collected += collected;
-      courseData[courseName].pending += Math.max(0, (student.totalFees || 0) - collected);
       courseData[courseName].students += 1;
     });
 
