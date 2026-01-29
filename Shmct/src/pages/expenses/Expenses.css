@@ -95,6 +95,19 @@
    STATS GRID - MATCHING FEESPAGE
    ============================================ */
 
+.expenses-stats-section {
+  margin-bottom: 2rem;
+}
+
+.expenses-stats-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 1rem 0;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
 .expenses-stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -102,15 +115,35 @@
   margin-bottom: 1.5rem;
 }
 
+.expenses-stats-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.expenses-stats-grid.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 @media (min-width: 640px) {
   .expenses-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .expenses-stats-grid.single {
+    grid-template-columns: 1fr;
+  }
+  .expenses-stats-grid.two {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (min-width: 1024px) {
   .expenses-stats-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .expenses-stats-grid.single {
+    grid-template-columns: 1fr;
+  }
+  .expenses-stats-grid.two {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -122,11 +155,118 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 1.25rem;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: visible;
 }
 
 .expenses-stat-card:hover {
   border-color: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
+}
+
+/* Tooltip Container */
+.expenses-stat-card-tooltip {
+  cursor: help;
+  z-index: 1;
+}
+
+.expenses-stat-card-tooltip:hover {
+  z-index: 10000;
+}
+
+.expenses-stat-tooltip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+  background: rgba(30, 30, 30, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 220px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 9999;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+/* Arrow pointing to the card */
+.expenses-stat-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 6px 6px 6px 0;
+  border-color: transparent rgba(255, 255, 255, 0.15) transparent transparent;
+}
+
+.expenses-stat-tooltip::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 5px 5px 0;
+  border-color: transparent rgba(30, 30, 30, 0.98) transparent transparent;
+}
+
+.expenses-stat-card-tooltip:hover .expenses-stat-tooltip {
+  opacity: 1;
+  visibility: visible;
+  left: calc(100% + 16px);
+}
+
+.expenses-tooltip-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.expenses-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.expenses-tooltip-row:last-child {
+  margin-bottom: 0;
+}
+
+.expenses-tooltip-label {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.expenses-tooltip-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #60a5fa;
+}
+
+.expenses-stat-card.clickable {
+  cursor: pointer;
+  background: rgba(24, 24, 24, 0.95);
+}
+
+.expenses-stat-card.clickable:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.7);
+  outline-offset: 2px;
 }
 
 .expenses-stat-content {

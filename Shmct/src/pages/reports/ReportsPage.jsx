@@ -18,7 +18,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  Line
 } from 'recharts';
 import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveContainer';
 import { useStudents } from '../../context/StudentContext';
@@ -28,7 +29,7 @@ import { getResponsiveChartConfig, formatChartLabel, getDynamicYAxisDomain, getA
 import './ReportsPage.css';
 
 const ReportsPage = () => {
-  const { getFilteredStudents, getFilteredPayments, currentBatch, placements } = useStudents();
+  const { getFilteredStudents, getFilteredPayments, currentBatch, placements, expenses, batches } = useStudents();
 
   // Get filtered data based on current batch
   const students = getFilteredStudents();
@@ -157,11 +158,18 @@ const ReportsPage = () => {
 
         const revenue = paymentRevenue + placementRevenue;
 
+        // Calculate expenses debits for the day
+        const dayExpenses = (expenses || []).filter(
+          (exp) => exp.date === dayKey && exp.transaction_type === 'debit'
+        );
+        const expensesDebit = dayExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
         const enrollments = students.filter((s) => s.admissionDate === dayKey).length;
 
         days.push({
           name: label,
           revenue,
+          expenses: expensesDebit,
           payments: dayPayments.length,
           enrollments,
         });
@@ -174,15 +182,15 @@ const ReportsPage = () => {
 
     // All time: group by batch names (e.g., 2022-23)
     if (!rangeWindow.start) {
-      const batches = Array.from(new Set(students.map((s) => s.batch).filter(Boolean)));
+      const batchNames = Array.from(new Set(students.map((s) => s.batch).filter(Boolean)));
       // Sort batches ascending by start year if parsable
-      batches.sort((a, b) => {
+      batchNames.sort((a, b) => {
         const ya = parseInt(String(a).split('-')[0], 10) || 0;
         const yb = parseInt(String(b).split('-')[0], 10) || 0;
         return ya - yb;
       });
 
-      return batches.map((batchName) => {
+      return batchNames.map((batchName) => {
         const batchStudentIds = students.filter((s) => s.batch === batchName).map((s) => s.id);
         const batchPayments = payments.filter((p) => batchStudentIds.includes(p.studentId));
         const paymentRevenue = batchPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -193,10 +201,22 @@ const ReportsPage = () => {
         const placementRevenue = batchPlacementInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
         
         const revenue = paymentRevenue + placementRevenue;
+        
+        // Calculate expenses debits for the batch
+        // Find the batch ID from batch name
+        const batchObj = (batches || []).find((b) => b.batch_name === batchName);
+        const batchId = batchObj ? batchObj.id : null;
+        
+        const batchExpenses = (expenses || []).filter(
+          (exp) => exp.transaction_type === 'debit' && exp.batch_id === batchId
+        );
+        const expensesDebit = batchExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+        
         const enrollments = batchStudentIds.length;
         return {
           name: batchName,
           revenue,
+          expenses: expensesDebit,
           payments: batchPayments.length,
           enrollments,
         };
@@ -229,6 +249,12 @@ const ReportsPage = () => {
 
       const revenue = paymentRevenue + placementRevenue;
 
+      // Calculate expenses debits for the month
+      const monthExpenses = (expenses || []).filter(
+        (exp) => exp.date && exp.date.startsWith(monthKey) && exp.transaction_type === 'debit'
+      );
+      const expensesDebit = monthExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
       const enrollments = students.filter((s) => {
         if (!s.admissionDate) return false;
         const inMonth = s.admissionDate.startsWith(monthKey);
@@ -239,6 +265,7 @@ const ReportsPage = () => {
         name: monthName,
         year: year,
         revenue,
+        expenses: expensesDebit,
         payments: monthPayments.length,
         enrollments,
       });
@@ -266,13 +293,13 @@ const ReportsPage = () => {
   const revenueTrendTitle = useMemo(() => {
     switch (dateRange) {
       case 'week':
-        return 'Revenue Trend (Last 7 Days)';
+        return 'Income vs Expenses (Last 7 Days)';
       case 'quarter':
-        return 'Revenue Trend (Last Quarter)';
+        return 'Income vs Expenses (Last Quarter)';
       case 'year':
-        return 'Revenue Trend (Last Year)';
+        return 'Income vs Expenses (Last Year)';
       default:
-        return 'Revenue Trend (12 Months)';
+        return 'Income vs Expenses (12 Months)';
     }
   }, [dateRange]);
 
@@ -418,6 +445,10 @@ const ReportsPage = () => {
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                   </linearGradient>
+                  <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                 <XAxis
@@ -439,8 +470,8 @@ const ReportsPage = () => {
                 />
                 <Tooltip
                   formatter={(value, name) => [
-                    name === 'revenue' ? formatCurrency(value) : value,
-                    name === 'revenue' ? 'Revenue' : name === 'payments' ? 'Payments' : 'Enrollments'
+                    ['revenue', 'expenses'].includes(name) ? formatCurrency(value) : value,
+                    name === 'revenue' ? 'Revenue' : name === 'expenses' ? 'Expenses' : name === 'payments' ? 'Payments' : 'Enrollments'
                   ]}
                   contentStyle={{
                     backgroundColor: '#141414',
@@ -452,6 +483,7 @@ const ReportsPage = () => {
                   labelStyle={{ color: '#fff' }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" dot={false} />
+                <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={false} />
               </AreaChart>
             </MeasuredResponsiveContainer>
           </div>

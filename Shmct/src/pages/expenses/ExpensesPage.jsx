@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, TrendingDown, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { Plus, TrendingDown, TrendingUp, BarChart3, PiggyBank, Wallet } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
 import ExpenseForm from './ExpenseForm';
@@ -58,13 +58,63 @@ const ExpensesPage = () => {
     const totalCredit = creditExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const netAmount = totalDebit - totalCredit;
 
+    // Business Income = Credit transactions (money coming in)
+    const businessIncome = totalCredit;
+    
+    // Business Expenses = Debit transactions (money going out)
+    const businessExpenses = totalDebit;
+    
+    // Business Profit = Income - Expenses
+    const businessProfit = businessIncome - businessExpenses;
+    
+    // Owner Withdrawals = Debit transactions from self/owner transactions
+    const ownerWithdrawals = debitExpenses
+      .filter((exp) => exp.isSelfTransaction)
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // Calculate breakdown by owner
+    const pritiWithdrawals = debitExpenses
+      .filter((exp) => exp.isSelfTransaction && exp.name === 'priti_personal')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const sushantWithdrawals = debitExpenses
+      .filter((exp) => exp.isSelfTransaction && exp.name === 'sushant_personal')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const ownerBreakdown = {
+      priti: pritiWithdrawals,
+      sushant: sushantWithdrawals
+    };
+    
+    // Cash in Hand = Net cash transactions (cash credits - cash debits)
+    const cashCredits = creditExpenses
+      .filter((exp) => exp.paymentMethod === 'cash')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const cashDebits = debitExpenses
+      .filter((exp) => exp.paymentMethod === 'cash')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const cashInHand = cashCredits - cashDebits;
+    
+    // Bank Balance = Net bank transactions (all non-cash credits - non-cash debits)
+    const bankCredits = creditExpenses
+      .filter((exp) => exp.paymentMethod !== 'cash')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const bankDebits = debitExpenses
+      .filter((exp) => exp.paymentMethod !== 'cash')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const bankBalance = bankCredits - bankDebits;
+
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
-    const monthlyExpenses = batchExpenses.filter((exp) => {
+    const monthlyDebits = batchExpenses.filter((exp) => {
       const expDate = new Date(exp.date);
-      return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
+      return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear && exp.transactionType === 'debit';
     });
-    const monthlyTotal = monthlyExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const monthlyCredits = batchExpenses.filter((exp) => {
+      const expDate = new Date(exp.date);
+      return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear && exp.transactionType === 'credit';
+    });
+    const monthlyDebitTotal = monthlyDebits.reduce((sum, exp) => sum + exp.amount, 0);
+    const monthlyCreditTotal = monthlyCredits.reduce((sum, exp) => sum + exp.amount, 0);
+    const monthlyTotal = monthlyDebitTotal - monthlyCreditTotal;
 
     return {
       totalDebit,
@@ -72,6 +122,14 @@ const ExpensesPage = () => {
       netAmount,
       monthlyTotal,
       transactionCount: batchExpenses.length,
+      // New metrics for enhanced dashboard
+      businessIncome,
+      businessExpenses,
+      businessProfit,
+      ownerWithdrawals,
+      ownerBreakdown,
+      cashInHand,
+      bankBalance,
     };
   }, [batchExpenses]);
 
@@ -120,52 +178,109 @@ const ExpensesPage = () => {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="expenses-stats-grid">
-        <div className="expenses-stat-card">
-          <div className="expenses-stat-content">
-            <div className="expenses-stat-icon red">
-              <TrendingDown />
+      {/* Stats Cards - Row 1: Business Metrics */}
+      <div className="expenses-stats-section">
+        <h3 className="expenses-stats-section-title">Business Overview</h3>
+        <div className="expenses-stats-grid">
+          {/* Business Income */}
+          <div className="expenses-stat-card">
+            <div className="expenses-stat-content">
+              <div className="expenses-stat-icon green">
+                <TrendingUp />
+              </div>
+              <div>
+                <p className="expenses-stat-label">Business Income</p>
+                <p className="expenses-stat-value green">{formatCurrency(stats.businessIncome)}</p>
+              </div>
             </div>
-            <div>
-              <p className="expenses-stat-label">Total Debits</p>
-              <p className="expenses-stat-value red">{formatCurrency(stats.totalDebit)}</p>
+          </div>
+
+          {/* Business Expenses */}
+          <div className="expenses-stat-card">
+            <div className="expenses-stat-content">
+              <div className="expenses-stat-icon red">
+                <TrendingDown />
+              </div>
+              <div>
+                <p className="expenses-stat-label">Business Expenses</p>
+                <p className="expenses-stat-value red">{formatCurrency(stats.businessExpenses)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Profit */}
+          <div className="expenses-stat-card">
+            <div className="expenses-stat-content">
+              <div className={`expenses-stat-icon ${stats.businessProfit >= 0 ? 'green' : 'red'}`}>
+                <BarChart3 />
+              </div>
+              <div>
+                <p className="expenses-stat-label">Business Profit</p>
+                <p className={`expenses-stat-value ${stats.businessProfit >= 0 ? 'green' : 'red'}`}>
+                  {formatCurrency(stats.businessProfit)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="expenses-stat-card">
-          <div className="expenses-stat-content">
-            <div className="expenses-stat-icon green">
-              <TrendingUp />
+      {/* Stats Cards - Row 2: Owner & Bank Metrics */}
+      <div className="expenses-stats-section">
+        <h3 className="expenses-stats-section-title">Cash Management</h3>
+        <div className="expenses-stats-grid">
+          {/* Owner Withdrawals */}
+          <div className="expenses-stat-card expenses-stat-card-tooltip">
+            <div className="expenses-stat-content">
+              <div className="expenses-stat-icon blue">
+                <Wallet />
+              </div>
+              <div>
+                <p className="expenses-stat-label">Owner Withdrawals</p>
+                <p className="expenses-stat-value blue">{formatCurrency(stats.ownerWithdrawals)}</p>
+              </div>
             </div>
-            <div>
-              <p className="expenses-stat-label">Total Credits</p>
-              <p className="expenses-stat-value green">{formatCurrency(stats.totalCredit)}</p>
+            {/* Tooltip */}
+            <div className="expenses-stat-tooltip">
+              <div className="expenses-tooltip-header">Owner Breakdown</div>
+              <div className="expenses-tooltip-row">
+                <span className="expenses-tooltip-label">Priti Personal:</span>
+                <span className="expenses-tooltip-value">{formatCurrency(stats.ownerBreakdown.priti)}</span>
+              </div>
+              <div className="expenses-tooltip-row">
+                <span className="expenses-tooltip-label">Sushant Personal:</span>
+                <span className="expenses-tooltip-value">{formatCurrency(stats.ownerBreakdown.sushant)}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="expenses-stat-card">
-          <div className="expenses-stat-content">
-            <div className="expenses-stat-icon blue">
-              <DollarSign />
-            </div>
-            <div>
-              <p className="expenses-stat-label">Net Amount</p>
-              <p className="expenses-stat-value blue">{formatCurrency(stats.netAmount)}</p>
+          {/* Cash in Hand */}
+          <div className="expenses-stat-card">
+            <div className="expenses-stat-content">
+              <div className={`expenses-stat-icon ${stats.cashInHand >= 0 ? 'green' : 'red'}`}>
+                <Wallet />
+              </div>
+              <div>
+                <p className="expenses-stat-label">Cash in Hand</p>
+                <p className={`expenses-stat-value ${stats.cashInHand >= 0 ? 'green' : 'red'}`}>
+                  {formatCurrency(stats.cashInHand)}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="expenses-stat-card">
-          <div className="expenses-stat-content">
-            <div className="expenses-stat-icon purple">
-              <Calendar />
-            </div>
-            <div>
-              <p className="expenses-stat-label">This Month</p>
-              <p className="expenses-stat-value purple">{formatCurrency(stats.monthlyTotal)}</p>
+          {/* Bank Balance */}
+          <div className="expenses-stat-card">
+            <div className="expenses-stat-content">
+              <div className={`expenses-stat-icon ${stats.bankBalance >= 0 ? 'green' : 'red'}`}>
+                <PiggyBank />
+              </div>
+              <div>
+                <p className="expenses-stat-label">Bank Balance</p>
+                <p className={`expenses-stat-value ${stats.bankBalance >= 0 ? 'green' : 'red'}`}>
+                  {formatCurrency(stats.bankBalance)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
