@@ -8,12 +8,15 @@ import { PlacementService } from '../../services/apiService';
 import './PlacementsPage.css';
 
 const PlacementsPage = () => {
-  const { getPlacementsByBatch, students, currentBatch, addPlacementInstallment, updatePlacementCosts } = useStudents();
+  const { getPlacementsByBatch, students, currentBatch, addPlacementInstallment, updatePlacementInstallment, updatePlacementCosts } = useStudents();
   const { canEdit } = useAuth();
   const placements = getPlacementsByBatch();
   const [expandedId, setExpandedId] = useState(null);
   const [formState, setFormState] = useState({});
   const [selectedInstallment, setSelectedInstallment] = useState(null);
+  const [editingInstallmentId, setEditingInstallmentId] = useState(null);
+  const [installmentEditForm, setInstallmentEditForm] = useState(null);
+  const [savingInstallment, setSavingInstallment] = useState(false);
   const [editingCosts, setEditingCosts] = useState(null);
   const [costForm, setCostForm] = useState({ country: '', companyCosting: '', myCosting: '' });
 
@@ -203,9 +206,106 @@ const PlacementsPage = () => {
 
   const handleInstallmentClick = (placement, installment) => {
     setSelectedInstallment({ placement, installment });
+    setEditingInstallmentId(null);
+    setInstallmentEditForm(null);
   };
 
-  const closeInstallmentDetail = () => setSelectedInstallment(null);
+  const closeInstallmentDetail = () => {
+    setSelectedInstallment(null);
+    setEditingInstallmentId(null);
+    setInstallmentEditForm(null);
+  };
+
+  const startEditInstallment = () => {
+    if (!selectedInstallment) return;
+    const { installment, placement } = selectedInstallment;
+    setEditingInstallmentId(installment.id);
+    setInstallmentEditForm({
+      amount: installment.amount ?? '',
+      date: installment.date ? installment.date.toString().split('T')[0] : '',
+      method: installment.method || 'cash',
+      bankMoneyReceived: installment.bankMoneyReceived || 'tgsb',
+      chequeNumber: installment.chequeNumber || '',
+      remarks: installment.remarks || '',
+      country: placement.country || '',
+      companyCosting: placement.companyCosting ?? '',
+      myCosting: placement.myCosting ?? '',
+    });
+  };
+
+  const cancelEditInstallment = () => {
+    setEditingInstallmentId(null);
+    setInstallmentEditForm(null);
+  };
+
+  const updateInstallmentForm = (key, value) => {
+    setInstallmentEditForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleSaveInstallment = async () => {
+    if (!selectedInstallment || !installmentEditForm) return;
+    const amountValue = Number(installmentEditForm.amount.toString().replace(/,/g, ''));
+    const companyCostingValue = Number(installmentEditForm.companyCosting.toString().replace(/,/g, ''));
+    const myCostingValue = Number(installmentEditForm.myCosting.toString().replace(/,/g, ''));
+
+    if (!amountValue || amountValue <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+    if (!installmentEditForm.date) {
+      alert('Please select a valid date');
+      return;
+    }
+    if (!installmentEditForm.country) {
+      alert('Please enter the country');
+      return;
+    }
+    if (!companyCostingValue || companyCostingValue <= 0 || !myCostingValue || myCostingValue <= 0) {
+      alert('Please enter valid company and my costing amounts');
+      return;
+    }
+
+    const method = installmentEditForm.method || 'cash';
+    const needsBank = ['bank_transfer', 'upi', 'card', 'cheque'].includes(method);
+
+    try {
+      setSavingInstallment(true);
+      await updatePlacementCosts(selectedInstallment.placement.id, {
+        country: installmentEditForm.country,
+        companyCosting: companyCostingValue,
+        myCosting: myCostingValue,
+      });
+      const updated = await updatePlacementInstallment(selectedInstallment.installment.id, {
+        amount: amountValue,
+        date: installmentEditForm.date,
+        method,
+        bankMoneyReceived: needsBank ? installmentEditForm.bankMoneyReceived : null,
+        chequeNumber: method === 'cheque' ? installmentEditForm.chequeNumber : null,
+        remarks: installmentEditForm.remarks,
+      });
+
+      setSelectedInstallment((prev) => (prev ? {
+        ...prev,
+        installment: updated,
+        placement: {
+          ...prev.placement,
+          country: installmentEditForm.country,
+          companyCosting: companyCostingValue,
+          myCosting: myCostingValue,
+        },
+      } : prev));
+      setEditingInstallmentId(null);
+      setInstallmentEditForm(null);
+    } catch (error) {
+      console.error('Error updating installment:', error);
+      alert(error.message || 'Failed to update installment. Please try again.');
+    } finally {
+      setSavingInstallment(false);
+    }
+  };
 
   return (
     <>
@@ -842,47 +942,198 @@ const PlacementsPage = () => {
               <p className="installment-detail-title">{selectedInstallment.placement.studentName}</p>
               <p className="installment-detail-subtitle">Installment details</p>
             </div>
-            <button className="installment-detail-close" onClick={closeInstallmentDetail} aria-label="Close details">
-              <X size={18} />
-            </button>
+            <div className="installment-detail-actions">
+              {canEdit() && editingInstallmentId !== selectedInstallment.installment.id && (
+                <button className="btn-save" onClick={startEditInstallment} title="Edit installment">
+                  <Edit2 size={16} />
+                </button>
+              )}
+              {canEdit() && editingInstallmentId === selectedInstallment.installment.id && (
+                <div className="edit-actions">
+                  <button
+                    className="btn-save"
+                    onClick={handleSaveInstallment}
+                    title="Save changes"
+                    disabled={savingInstallment}
+                  >
+                    <Save size={16} />
+                  </button>
+                  <button className="btn-cancel" onClick={cancelEditInstallment} title="Cancel editing">
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              <button className="installment-detail-close" onClick={closeInstallmentDetail} aria-label="Close details">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
-          <div className="installment-detail-grid">
-            <div className="installment-detail-row">
-              <span className="installment-detail-label">Amount</span>
-              <span className="installment-detail-value">{formatCurrency(selectedInstallment.installment.amount)}</span>
+          {editingInstallmentId === selectedInstallment.installment.id ? (
+            <div className="installment-edit-form add-installment">
+              <div className="add-installment-fields">
+                <div className="form-group">
+                  <label className="form-label">
+                    <MapPin size={16} />
+                    Country *
+                  </label>
+                  <input
+                    type="text"
+                    value={installmentEditForm?.country ?? ''}
+                    onChange={(e) => updateInstallmentForm('country', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <Building2 size={16} />
+                    Company Costing *
+                  </label>
+                  <input
+                    type="text"
+                    value={installmentEditForm?.companyCosting ?? ''}
+                    onChange={(e) => updateInstallmentForm('companyCosting', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <IndianRupee size={16} />
+                    My Costing *
+                  </label>
+                  <input
+                    type="text"
+                    value={installmentEditForm?.myCosting ?? ''}
+                    onChange={(e) => updateInstallmentForm('myCosting', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <DollarSign size={16} />
+                    Amount *
+                  </label>
+                  <input
+                    type="text"
+                    value={installmentEditForm?.amount ?? ''}
+                    onChange={(e) => updateInstallmentForm('amount', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <Calendar size={16} />
+                    Payment Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={installmentEditForm?.date ?? ''}
+                    onChange={(e) => updateInstallmentForm('date', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <CreditCard size={16} />
+                    Payment Method
+                  </label>
+                  <select
+                    value={installmentEditForm?.method ?? 'cash'}
+                    onChange={(e) => updateInstallmentForm('method', e.target.value)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                </div>
+                {(installmentEditForm?.method === 'bank_transfer' || installmentEditForm?.method === 'upi' || installmentEditForm?.method === 'card' || installmentEditForm?.method === 'cheque') && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      <Building2 size={16} />
+                      Bank Account
+                    </label>
+                    <select
+                      value={installmentEditForm?.bankMoneyReceived ?? 'tgsb'}
+                      onChange={(e) => updateInstallmentForm('bankMoneyReceived', e.target.value)}
+                      className="bank-select"
+                    >
+                      {PLACEMENT_BANKS.map((bank) => (
+                        <option key={bank.value} value={bank.value}>
+                          {bank.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {installmentEditForm?.method === 'cheque' && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      <MessageSquare size={16} />
+                      Cheque Number
+                    </label>
+                    <input
+                      type="text"
+                      value={installmentEditForm?.chequeNumber ?? ''}
+                      onChange={(e) => updateInstallmentForm('chequeNumber', e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="form-group full-width">
+                  <label className="form-label">
+                    <MessageSquare size={16} />
+                    Remarks
+                  </label>
+                  <textarea
+                    placeholder="Add any notes or remarks (optional)"
+                    value={installmentEditForm?.remarks ?? ''}
+                    onChange={(e) => updateInstallmentForm('remarks', e.target.value)}
+                    className="remarks-textarea"
+                    rows="2"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="installment-detail-row">
-              <span className="installment-detail-label">Date</span>
-              <span className="installment-detail-value">{formatDate(selectedInstallment.installment.date)}</span>
-            </div>
-            <div className="installment-detail-row">
-              <span className="installment-detail-label">Payment Method</span>
-              <span className="installment-detail-value">{formatMethod(selectedInstallment.installment.method)}</span>
-            </div>
-            <div className="installment-detail-row">
-              <span className="installment-detail-label">Course</span>
-              <span className="installment-detail-value">{selectedInstallment.placement.courseLabel}</span>
-            </div>
-            {selectedInstallment.installment.bankMoneyReceived && (
+          ) : (
+            <div className="installment-detail-grid">
               <div className="installment-detail-row">
-                <span className="installment-detail-label">Bank</span>
-                <span className="installment-detail-value">
-                  {getPlacementBankLabel(selectedInstallment.installment.bankMoneyReceived)}
-                </span>
+                <span className="installment-detail-label">Amount</span>
+                <span className="installment-detail-value">{formatCurrency(selectedInstallment.installment.amount)}</span>
               </div>
-            )}
-            {selectedInstallment.installment.remarks && (
+              <div className="installment-detail-row">
+                <span className="installment-detail-label">Date</span>
+                <span className="installment-detail-value">{formatDate(selectedInstallment.installment.date)}</span>
+              </div>
+              <div className="installment-detail-row">
+                <span className="installment-detail-label">Payment Method</span>
+                <span className="installment-detail-value">{formatMethod(selectedInstallment.installment.method)}</span>
+              </div>
+              <div className="installment-detail-row">
+                <span className="installment-detail-label">Course</span>
+                <span className="installment-detail-value">{selectedInstallment.placement.courseLabel}</span>
+              </div>
+              {selectedInstallment.installment.bankMoneyReceived && (
+                <div className="installment-detail-row">
+                  <span className="installment-detail-label">Bank</span>
+                  <span className="installment-detail-value">
+                    {getPlacementBankLabel(selectedInstallment.installment.bankMoneyReceived)}
+                  </span>
+                </div>
+              )}
+              {selectedInstallment.installment.chequeNumber && (
+                <div className="installment-detail-row">
+                  <span className="installment-detail-label">Cheque Number</span>
+                  <span className="installment-detail-value">{selectedInstallment.installment.chequeNumber}</span>
+                </div>
+              )}
+              {selectedInstallment.installment.remarks && (
+                <div className="installment-detail-row full">
+                  <span className="installment-detail-label">Remarks</span>
+                  <span className="installment-detail-value remarks">{selectedInstallment.installment.remarks}</span>
+                </div>
+              )}
               <div className="installment-detail-row full">
-                <span className="installment-detail-label">Remarks</span>
-                <span className="installment-detail-value remarks">{selectedInstallment.installment.remarks}</span>
+                <span className="installment-detail-label">Placement</span>
+                <span className="installment-detail-value">{selectedInstallment.placement.country} • {formatCurrency(selectedInstallment.placement.myCosting)}</span>
               </div>
-            )}
-            <div className="installment-detail-row full">
-              <span className="installment-detail-label">Placement</span>
-              <span className="installment-detail-value">{selectedInstallment.placement.country} • {formatCurrency(selectedInstallment.placement.myCosting)}</span>
             </div>
-          </div>
+          )}
         </div>
       </div>
     )}

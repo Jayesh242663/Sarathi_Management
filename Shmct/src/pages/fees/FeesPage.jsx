@@ -54,19 +54,21 @@ const FeesPage = () => {
 
   // Filter students
   const filteredStudents = useMemo(() => {
-    return studentsWithFees.filter((student) => {
-      const matchesSearch = 
-        student.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.enrollmentNumber.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      let matchesFeeStatus = true;
-      if (feeStatusFilter !== 'all') {
-        matchesFeeStatus = student.feesSummary?.status === feeStatusFilter;
-      }
-      
-      return matchesSearch && matchesFeeStatus;
-    });
+    return studentsWithFees
+      .filter((student) => student.status !== 'dropped')
+      .filter((student) => {
+        const matchesSearch = 
+          student.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.enrollmentNumber.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        let matchesFeeStatus = true;
+        if (feeStatusFilter !== 'all') {
+          matchesFeeStatus = student.feesSummary?.status === feeStatusFilter;
+        }
+        
+        return matchesSearch && matchesFeeStatus;
+      });
   }, [studentsWithFees, searchQuery, feeStatusFilter]);
 
   // Pagination
@@ -78,12 +80,22 @@ const FeesPage = () => {
 
   // Summary stats
   const stats = useMemo(() => {
-    const totalFees = students.reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
-    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const pendingFees = Math.max(0, totalFees - totalPaid);
-    const totalDiscount = students.reduce((sum, s) => sum + (s.discount || 0), 0);
+    // Calculate total fees only from active students (exclude dropped-out)
+    const activeStudentsWithFees = filteredStudents;
+    const totalFees = activeStudentsWithFees
+      .reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
     
-    // Calculate remaining fees from dropped-out students
+    // Total paid from active students only
+    const activeStudentIds = new Set(activeStudentsWithFees.map(s => s.id));
+    const activePaid = payments
+      .filter(p => activeStudentIds.has(p.studentId))
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const pendingFees = Math.max(0, totalFees - activePaid);
+    
+    // Calculate total discount from active students only
+    const totalDiscount = activeStudentsWithFees.reduce((sum, s) => sum + (s.discount || 0), 0);
+    
+    // Calculate remaining fees from dropped-out students (loss)
     const droppedOutLoss = students
       .filter((s) => s.status === 'dropped')
       .reduce((sum, s) => {
@@ -95,13 +107,14 @@ const FeesPage = () => {
       }, 0);
     
     const totalLoss = totalDiscount + droppedOutLoss;
-    const paidCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'paid').length;
-    const partialCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'partial').length;
-    const pendingCount = studentsWithFees.filter((s) => s.feesSummary?.status === 'pending').length;
+    
+    const paidCount = activeStudentsWithFees.filter((s) => s.feesSummary?.status === 'paid').length;
+    const partialCount = activeStudentsWithFees.filter((s) => s.feesSummary?.status === 'partial').length;
+    const pendingCount = activeStudentsWithFees.filter((s) => s.feesSummary?.status === 'pending').length;
 
     return { 
       totalFees, 
-      totalPaid, 
+      totalPaid: activePaid, 
       pendingFees, 
       totalDiscount,
       droppedOutLoss,
@@ -110,18 +123,20 @@ const FeesPage = () => {
       partialCount, 
       pendingCount,
     };
-  }, [students, payments, studentsWithFees]);
+  }, [filteredStudents, payments, students]);
 
-  // Recent payments
+  // Recent payments - only from active students
   const recentPayments = useMemo(() => {
+    const activeStudentIds = new Set(filteredStudents.map(s => s.id));
     return payments
+      .filter(p => activeStudentIds.has(p.studentId))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 5)
       .map((payment) => {
         const student = students.find((s) => s.id === payment.studentId);
         return { ...payment, student };
       });
-  }, [payments, students]);
+  }, [payments, students, filteredStudents]);
 
   const navigateToAudit = (payment) => {
     navigate('/audit', {

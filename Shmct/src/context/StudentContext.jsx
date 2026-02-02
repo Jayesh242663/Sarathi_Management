@@ -78,6 +78,7 @@ const mapPlacement = (placement, installments, batchLookup) => {
       date: inst.payment_date || inst.due_date,
       method: inst.payment_method,
       bankMoneyReceived: inst.bank_account || null,
+      chequeNumber: inst.cheque_number || '',
       remarks: inst.notes || '',
       status: inst.status,
       installmentNumber: inst.installment_number,
@@ -787,6 +788,51 @@ export const StudentProvider = ({ children }) => {
     return newInstallment;
   }, [students, placements, logAuditEvent]);
 
+  const updatePlacementInstallment = useCallback(async (installmentId, installmentData) => {
+    const payload = {
+      amount: installmentData.amount,
+      payment_date: installmentData.date,
+      payment_method: installmentData.method,
+      bank_account: installmentData.bankMoneyReceived || null,
+      cheque_number: installmentData.chequeNumber || null,
+      notes: installmentData.remarks || '',
+    };
+
+    const response = await PlacementInstallmentService.update(installmentId, payload);
+    const updated = response.data || response;
+
+    const mappedInstallment = {
+      id: updated.id,
+      amount: Number(updated.amount || 0),
+      date: updated.payment_date || updated.due_date,
+      method: updated.payment_method,
+      bankMoneyReceived: updated.bank_account || null,
+      chequeNumber: updated.cheque_number || null,
+      remarks: updated.notes || '',
+      status: updated.status,
+      installmentNumber: updated.installment_number,
+      paymentLocation: updated.payment_location || null,
+    };
+
+    setPlacements((prev) =>
+      prev.map((p) => {
+        const hasInstallment = (p.installments || []).some((inst) => inst.id === installmentId);
+        if (!hasInstallment) return p;
+
+        const updatedInstallments = (p.installments || []).map((inst) =>
+          inst.id === installmentId ? { ...inst, ...mappedInstallment } : inst
+        );
+
+        return {
+          ...p,
+          installments: updatedInstallments,
+        };
+      })
+    );
+
+    return mappedInstallment;
+  }, []);
+
   // Update placement costs (Company Costing and My Costing)
   const updatePlacementCosts = useCallback(async (placementId, { country = '', companyCosting, myCosting }) => {
     const placement = placements.find((p) => p.id === placementId);
@@ -1171,6 +1217,7 @@ export const StudentProvider = ({ children }) => {
     placements,
     getPlacementsByBatch,
     addPlacementInstallment,
+    updatePlacementInstallment,
     updatePlacementCosts,
     loadSupabaseData,
   };
