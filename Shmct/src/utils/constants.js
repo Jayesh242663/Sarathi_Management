@@ -38,10 +38,13 @@ export const FEE_STATUS = {
   OVERDUE: 'overdue',
 };
 
-// Default admin credentials (for demo)
+// Default admin credentials - REMOVED FOR SECURITY
+// Demo credentials should be provided via environment variables
+// or configured through a secure admin setup process
+// DO NOT hardcode credentials in source code
 export const DEFAULT_ADMIN = {
-  email: 'admin@shmct.edu',
-  password: 'admin123',
+  email: 'admin@example.com',
+  password: 'CHANGE_ME_IN_PRODUCTION',
   name: 'Administrator',
   role: 'admin',
 };

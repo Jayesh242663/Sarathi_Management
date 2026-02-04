@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
+import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
 
 const router = Router();
 
@@ -14,21 +15,33 @@ router.use(restrictWriteToAdmin);
 router.get('/', async (req, res, next) => {
   try {
     const sb = requireSupabase();
-    const { batchId, limit } = req.query;
-    const pageLimit = Number(limit) > 0 ? Math.min(Number(limit), 500) : 500;
+    const { batchId } = req.query;
+    const { page, limit, offset } = parsePagination(req.query);
 
-    let query = sb.from('expenses').select('*');
+    // Build count query
+    let countQuery = sb.from('expenses').select('*', { count: 'exact', head: true });
     if (batchId && batchId !== 'all') {
-      query = query.eq('batch_id', batchId);
+      countQuery = countQuery.eq('batch_id', batchId);
     }
 
-    const { data, error } = await query
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(pageLimit);
+    // Build data query
+    let dataQuery = sb.from('expenses').select('*');
+    if (batchId && batchId !== 'all') {
+      dataQuery = dataQuery.eq('batch_id', batchId);
+    }
+
+    // Execute queries in parallel
+    const [{ count }, { data, error }] = await Promise.all([
+      countQuery,
+      applyPagination(
+        dataQuery.order('date', { ascending: false }).order('created_at', { ascending: false }),
+        offset,
+        limit
+      )
+    ]);
 
     if (error) throw error;
-    res.json({ data });
+    res.json(formatPaginatedResponse(data, count || 0, page, limit));
   } catch (err) {
     next(err);
   }
@@ -107,6 +120,37 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid transaction type' });
     }
 
+    // Check for duplicate entries
+    // Duplicates are defined as: same name, date, amount, and payment method in the same batch
+    let duplicateQuery = sb
+      .from('expenses')
+      .select('id')
+      .eq('name', name)
+      .eq('date', date)
+      .eq('amount', Number(amount))
+      .eq('payment_method', paymentMethod);
+
+    // Handle batch_id matching (including null)
+    if (batchId) {
+      duplicateQuery = duplicateQuery.eq('batch_id', batchId);
+    } else {
+      duplicateQuery = duplicateQuery.is('batch_id', null);
+    }
+
+    const { data: existingExpense, error: checkError } = await duplicateQuery
+      .limit(1)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') throw checkError;
+
+    if (existingExpense) {
+      return res.status(409).json({
+        error: 'Duplicate expense entry',
+        message: 'An expense with the same name, date, amount, and payment method already exists for this batch. Please check before adding.',
+        code: 'DUPLICATE_EXPENSE'
+      });
+    }
+
     const expense = {
       name,
       date,
@@ -126,7 +170,17 @@ router.post('/', async (req, res, next) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Handle unique constraint violation (error code 23505)
+      if (error.code === '23505') {
+        return res.status(409).json({
+          error: 'Duplicate expense entry',
+          message: 'An expense with the same name, date, amount, and payment method already exists for this batch. Please check before adding.',
+          code: 'DUPLICATE_EXPENSE'
+        });
+      }
+      throw error;
+    }
 
     res.status(201).json({ data });
   } catch (err) {

@@ -1,18 +1,21 @@
 import { Router } from 'express';
+import { authenticateToken } from '../middleware/auth.js';
+import { attachUserRole } from '../middleware/authorize.js';
 import { requireSupabase } from '../config/supabase.js';
 
 const router = Router();
 
 console.log('[data] Data router initialized');
 
-// Authentication is already applied globally in index.js
-// No need to apply authenticateToken here
+// Apply authentication to all data routes
+router.use(authenticateToken);
+router.use(attachUserRole);
 
-// Test endpoint to verify Supabase connection
+// Test endpoint to verify Supabase connection (authenticated)
 router.get('/test', async (req, res, next) => {
   try {
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) console.log('[data] /test endpoint called');
+    if (isDev) console.log('[data] /test endpoint called by user:', req.user?.id);
     const sb = requireSupabase();
     if (isDev) console.log('[data] Supabase instance obtained');
     

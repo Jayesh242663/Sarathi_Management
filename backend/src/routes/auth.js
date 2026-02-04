@@ -3,12 +3,17 @@ import { requireSupabase, serviceKeyRole } from '../config/supabase.js';
 import supabase from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, requireAdmin } from '../middleware/authorize.js';
+import { logPasswordChange, logRoleChange, logFailedAuth } from '../utils/auditLog.js';
 
-// Comma-separated list of super admin emails, defaults to the requested account
-const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || 'jayeshchanne9@gmail.com')
+// Comma-separated list of super admin emails from environment configuration
+const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
+
+if (SUPER_ADMIN_EMAILS.length === 0) {
+  console.warn('[AUTH] SUPER_ADMIN_EMAILS environment variable is not configured. Super admin features disabled.');
+}
 
 const isSuperAdminEmail = (email = '') => SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
 
@@ -42,30 +47,69 @@ async function getUserProfile(userId) {
  */
 async function ensureUserProfile(userId, email, fullName = '', role = 'auditor') {
   try {
-    // Use the service-role client to perform upsert so RLS does not block writes
     const sb = requireSupabase();
-    const { data, error } = await sb
+    
+    console.log('[auth] Ensuring user profile for:', userId);
+    
+    // First, check if profile exists
+    const { data: existing, error: selectError } = await sb
       .from('user_profiles')
-      .upsert(
-        {
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = no rows
+      console.error('[auth] Error checking existing profile:', selectError);
+    }
+
+    if (existing) {
+      console.log('[auth] Profile exists, updating...');
+      // User profile already exists, update it
+      const { data, error } = await sb
+        .from('user_profiles')
+        .update({
+          full_name: fullName || email.split('@')[0],
+          role,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[auth] Error updating user profile:', error);
+        return null;
+      }
+      console.log('[auth] Profile updated successfully');
+      return data;
+    } else {
+      // New user, insert the profile
+      console.log('[auth] Creating new profile...');
+      const { data, error } = await sb
+        .from('user_profiles')
+        .insert({
           id: userId,
           full_name: fullName || email.split('@')[0],
           role,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      )
-      .select();
+        })
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Error creating user profile:', error);
-      return null;
+      if (error) {
+        console.error('[auth] Error creating user profile:', error);
+        // Log full error details for debugging
+        console.error('[auth] Error code:', error.code);
+        console.error('[auth] Error details:', error.details);
+        console.error('[auth] Error hint:', error.hint);
+        return null;
+      }
+      console.log('[auth] Profile created successfully');
+      return data;
     }
-
-    return data?.[0];
   } catch (err) {
-    console.error('Error in ensureUserProfile:', err);
+    console.error('[auth] Exception in ensureUserProfile:', err);
     return null;
   }
 }
@@ -95,6 +139,10 @@ router.post('/login', async (req, res, next) => {
     if (error) {
       const isDev = process.env.NODE_ENV !== 'production';
       if (isDev) console.error('[auth] Supabase auth error:', error);
+      
+      // Log failed authentication attempt
+      await logFailedAuth(req, email, 'supabase_auth_error');
+      
       const err = new Error(isDev ? error.message : 'Invalid email or password');
       err.status = 401;
       throw err;
@@ -433,11 +481,33 @@ router.post('/reset-password', async (req, res, next) => {
  */
 router.post('/update-password', async (req, res, next) => {
   try {
-    const { password } = req.body;
+    const { password, confirmPassword } = req.body;
     const token = req.token;
 
-    if (!password) {
-      const err = new Error('New password is required');
+    if (!password || !confirmPassword) {
+      const err = new Error('Password and confirmation are required');
+      err.status = 400;
+      throw err;
+    }
+
+    if (password !== confirmPassword) {
+      const err = new Error('Passwords do not match');
+      err.status = 400;
+      throw err;
+    }
+
+    // Validate password strength
+    const MINIMUM_PASSWORD_LENGTH = 12;
+    const PASSWORD_REQUIREMENTS = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/;
+
+    if (password.length < MINIMUM_PASSWORD_LENGTH) {
+      const err = new Error(`Password must be at least ${MINIMUM_PASSWORD_LENGTH} characters`);
+      err.status = 400;
+      throw err;
+    }
+
+    if (!PASSWORD_REQUIREMENTS.test(password)) {
+      const err = new Error('Password must contain uppercase, lowercase, number, and special character');
       err.status = 400;
       throw err;
     }
@@ -461,10 +531,15 @@ router.post('/update-password', async (req, res, next) => {
     // Update password
     const { error } = await sb.auth.updateUser({ password });
     if (error) {
+      // Log failed password change
+      await logPasswordChange(req, user.id, false);
       const err = new Error(error.message);
       err.status = 400;
       throw err;
     }
+
+    // Log successful password change
+    await logPasswordChange(req, user.id, true);
 
     res.json({
       success: true,
@@ -541,12 +616,47 @@ router.post('/users', authenticateToken, attachUserRole, requireAdmin, async (re
     }
 
     // Persist profile and role
-      let profile = await ensureUserProfile(
+    // The service role client should bypass RLS, but let's log if there's an issue
+    let profile = null;
+    try {
+      profile = await ensureUserProfile(
         createdUser.user.id,
         email,
         fullName || email.split('@')[0],
         normalizedRole
       );
+    } catch (profileError) {
+      console.error('[auth] Error creating profile:', profileError);
+      // Don't fail - user was created, profile creation failed
+      // Return the user anyway with a warning
+    }
+
+    // If profile creation failed, try one more time with a different approach
+    if (!profile) {
+      try {
+        const sb = requireSupabase();
+        console.log('[auth] Retrying profile creation with direct insert...');
+        const { data: retryProfile, error: retryError } = await sb
+          .from('user_profiles')
+          .insert({
+            id: createdUser.user.id,
+            full_name: fullName || email.split('@')[0],
+            role: normalizedRole,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+        
+        if (retryError) {
+          console.error('[auth] Retry failed:', retryError);
+        } else {
+          profile = retryProfile;
+        }
+      } catch (err) {
+        console.error('[auth] Retry error:', err);
+      }
+    }
 
       // Fallback: explicitly update role if upsert didn't persist it
       try {
@@ -601,6 +711,15 @@ router.put('/users/:userId/role', authenticateToken, attachUserRole, requireAdmi
       throw err;
     }
 
+    // Get current role for audit log
+    const { data: currentUser } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    const currentRole = currentUser?.role;
+
     const { data, error } = await supabase
       .from('user_profiles')
       .update({ role })
@@ -612,6 +731,11 @@ router.put('/users/:userId/role', authenticateToken, attachUserRole, requireAdmi
       const err = new Error(error.message);
       err.status = 500;
       throw err;
+    }
+
+    // Log role change
+    if (currentRole && currentRole !== role) {
+      await logRoleChange(req, userId, currentRole, role);
     }
 
     res.json({

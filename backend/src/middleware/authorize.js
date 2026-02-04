@@ -1,9 +1,13 @@
 import supabase, { requireSupabase } from '../config/supabase.js';
 
-const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || 'jayeshchanne9@gmail.com')
+const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
+
+if (SUPER_ADMIN_EMAILS.length === 0) {
+  console.warn('[AUTH] SUPER_ADMIN_EMAILS environment variable is not configured. Super admin features disabled.');
+}
 
 const isSuperAdminEmail = (email = '') => SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
 

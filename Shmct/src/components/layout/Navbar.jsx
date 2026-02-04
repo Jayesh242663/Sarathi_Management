@@ -6,7 +6,8 @@ import {
   LogOut,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Navbar.css';
@@ -113,6 +114,19 @@ const Navbar = ({ onMenuClick, onToggleCollapse, sidebarCollapsed }) => {
                 </div>
                 <div className="navbar-dropdown-divider" />
                 <div className="navbar-dropdown-menu">
+                  {user?.role === 'administrator' && (
+                    <button 
+                      onClick={() => {
+                        navigate('/admin/super-admin');
+                        setShowUserMenu(false);
+                      }} 
+                      className="navbar-dropdown-item"
+                      title="Manage users and roles"
+                    >
+                      <ShieldCheck size={18} />
+                      <span>User Management</span>
+                    </button>
+                  )}
                   <button onClick={handleLogout} className="navbar-dropdown-item logout">
                     <LogOut />
                     <span>Sign Out</span>

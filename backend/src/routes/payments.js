@@ -1,9 +1,29 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
+import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
 
 const router = Router();
+
+// Input validation schemas
+const paymentCreateSchema = z.object({
+  studentId: z.string().uuid('Invalid student ID'),
+  batchId: z.string().uuid().optional(),
+  amount: z.number().positive('Amount must be a positive number'),
+  paymentDate: z.string().refine(
+    (date) => !isNaN(Date.parse(date)),
+    'Invalid payment date'
+  ),
+  paymentMethod: z.enum(['cash', 'cheque', 'bank_transfer', 'online'], {
+    errorMap: () => ({ message: 'Invalid payment method' })
+  }),
+  bankMoneyReceived: z.number().nonnegative().optional(),
+  chequeNumber: z.string().max(50).optional(),
+  remarks: z.string().max(500).optional(),
+  receiptNumber: z.string().max(100).optional(),
+});
 
 // Secure all payment routes
 router.use(authenticateToken);
@@ -14,20 +34,41 @@ router.use(restrictWriteToAdmin);
 router.get('/', async (req, res, next) => {
   try {
     const sb = requireSupabase();
-    const { studentId, batchId, limit } = req.query;
-    const pageLimit = Number(limit) > 0 ? Math.min(Number(limit), 200) : 200;
+    const { studentId, batchId } = req.query;
+    
+    // Validate query parameters
+    if (studentId && !z.string().uuid().safeParse(studentId).success) {
+      return res.status(400).json({ error: 'Invalid student ID format' });
+    }
+    if (batchId && !z.string().uuid().safeParse(batchId).success) {
+      return res.status(400).json({ error: 'Invalid batch ID format' });
+    }
+    
+    // Parse pagination
+    const { page, limit, offset } = parsePagination(req.query);
 
-    let query = sb.from('payments').select('*');
-    if (studentId) query = query.eq('student_id', studentId);
-    if (batchId) query = query.eq('batch_id', batchId);
+    // Build count query
+    let countQuery = sb.from('payments').select('*', { count: 'exact', head: true });
+    if (studentId) countQuery = countQuery.eq('student_id', studentId);
+    if (batchId) countQuery = countQuery.eq('batch_id', batchId);
+    
+    // Build data query
+    let dataQuery = sb.from('payments').select('*');
+    if (studentId) dataQuery = dataQuery.eq('student_id', studentId);
+    if (batchId) dataQuery = dataQuery.eq('batch_id', batchId);
 
-    const { data, error } = await query
-      .order('payment_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(pageLimit);
+    // Execute queries
+    const [{ count }, { data, error }] = await Promise.all([
+      countQuery,
+      applyPagination(
+        dataQuery.order('payment_date', { ascending: false }).order('created_at', { ascending: false }),
+        offset,
+        limit
+      )
+    ]);
 
     if (error) throw error;
-    res.json({ data });
+    res.json(formatPaginatedResponse(data, count || 0, page, limit));
   } catch (err) {
     next(err);
   }
@@ -42,7 +83,15 @@ const buildReceiptNumber = () => {
 // POST create new payment
 router.post('/', async (req, res, next) => {
   try {
-    const sb = requireSupabase();
+    // Validate input
+    const validation = paymentCreateSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+
     const {
       studentId,
       batchId: batchIdFromPayload,
@@ -53,13 +102,24 @@ router.post('/', async (req, res, next) => {
       chequeNumber,
       remarks,
       receiptNumber,
-    } = req.body;
+    } = validation.data;
 
-    if (!studentId || !amount || !paymentDate || !paymentMethod) {
+    // Additional validation: amount should not exceed 10 million
+    if (amount > 10000000) {
       return res.status(400).json({
-        error: 'studentId, amount, paymentDate, and paymentMethod are required',
+        error: 'Amount exceeds maximum allowed value (10,000,000)'
       });
     }
+
+    // Validate payment date is not in the future
+    const paymentDateObj = new Date(paymentDate);
+    if (paymentDateObj > new Date()) {
+      return res.status(400).json({
+        error: 'Payment date cannot be in the future'
+      });
+    }
+
+    const sb = requireSupabase();
 
     // Fetch student to derive batch_id and name (and validate existence)
     const { data: student, error: studentError } = await sb

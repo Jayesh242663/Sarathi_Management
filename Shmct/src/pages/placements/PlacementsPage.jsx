@@ -4,6 +4,7 @@ import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDate, getInitials, formatNumberWithCommas } from '../../utils/formatters';
 import { COURSES } from '../../utils/constants';
+import { COUNTRIES, getCountryData, getCountryCode } from '../../utils/countries';
 import { PlacementService } from '../../services/apiService';
 import './PlacementsPage.css';
 
@@ -19,6 +20,7 @@ const PlacementsPage = () => {
   const [savingInstallment, setSavingInstallment] = useState(false);
   const [editingCosts, setEditingCosts] = useState(null);
   const [costForm, setCostForm] = useState({ country: '', companyCosting: '', myCosting: '' });
+  const [recentCountry, setRecentCountry] = useState(null);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +53,19 @@ const PlacementsPage = () => {
       .sort();
     return countries;
   }, [placements]);
+
+  // Sort countries with recently used at the top
+  const sortedCountries = useMemo(() => {
+    if (!recentCountry) return COUNTRIES;
+    
+    const recentCountryData = COUNTRIES.find(c => c.name === recentCountry);
+    if (!recentCountryData) return COUNTRIES;
+    
+    return [
+      recentCountryData,
+      ...COUNTRIES.filter(c => c.name !== recentCountry)
+    ];
+  }, [recentCountry]);
 
   const placementsWithStudent = useMemo(() => {
     const allPlacements = placements.map((placement) => {
@@ -157,6 +172,7 @@ const PlacementsPage = () => {
 
     try {
       await updatePlacementCosts(placementId, { country, companyCosting, myCosting });
+      setRecentCountry(country); // Track the recently used country
       setEditingCosts(null);
       setCostForm({ country: '', companyCosting: '', myCosting: '' });
     } catch (error) {
@@ -456,11 +472,14 @@ const PlacementsPage = () => {
                   className="placements-filter-select"
                 >
                   <option value="all">All Countries</option>
-                  {uniqueCountries.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
+                  {uniqueCountries.map((country) => {
+                    const countryData = getCountryData(country);
+                    return (
+                      <option key={country} value={country}>
+                        {countryData ? `${countryData.flag} ${country}` : country}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
@@ -540,15 +559,27 @@ const PlacementsPage = () => {
                     </td>
                     <td data-label="Country">
                       {editingCosts === placement.id ? (
-                        <input
-                          type="text"
-                          className="cost-input"
+                        <select
+                          className="cost-input country-select"
                           value={costForm.country}
                           onChange={(e) => setCostForm({...costForm, country: e.target.value})}
-                          placeholder="Country"
-                        />
+                        >
+                          <option value="">Select a country</option>
+                          {sortedCountries.map((country) => (
+                            <option key={country.name} value={country.name}>
+                              {country.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : placement.country ? (
+                        <span 
+                          className="country-code-badge"
+                          title={`${getCountryData(placement.country)?.flag || ''} ${placement.country}`}
+                        >
+                          {getCountryCode(placement.country) || placement.country}
+                        </span>
                       ) : (
-                        <span className="country-chip">{placement.country || '-'}</span>
+                        <span className="country-chip">-</span>
                       )}
                     </td>
                     <td data-label="Company Costing" className="number">
@@ -811,7 +842,16 @@ const PlacementsPage = () => {
                   </div>
                   <div className="placement-card-badges">
                     <span className="course-chip">{placement.courseLabel}</span>
-                    <span className="country-chip">{placement.country || '-'}</span>
+                    {placement.country ? (
+                      <span 
+                        className="country-code-badge"
+                        title={`${getCountryData(placement.country)?.flag || ''} ${placement.country}`}
+                      >
+                        {getCountryCode(placement.country) || placement.country}
+                      </span>
+                    ) : (
+                      <span className="country-chip">-</span>
+                    )}
                     <span className="date-chip">{formatDate(placement.placementDate)}</span>
                   </div>
                 </div>
@@ -823,15 +863,20 @@ const PlacementsPage = () => {
                         <div className="label-row">
                           <span className="label">Country *</span>
                         </div>
-                        <input
-                          type="text"
-                          className="cost-input"
+                        <select
+                          className="cost-input country-select"
                           value={costForm.country}
                           onChange={(e) => {
                             setCostForm({ ...costForm, country: e.target.value });
                           }}
-                          placeholder="e.g., USA, Canada"
-                        />
+                        >
+                          <option value="">Select a country</option>
+                          {sortedCountries.map((country) => (
+                            <option key={country.name} value={country.name}>
+                              {country.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
                     <div className="placement-card-stat">

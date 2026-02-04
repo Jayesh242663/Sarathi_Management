@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
+import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
 
 const router = Router();
 
@@ -14,16 +15,29 @@ router.use(restrictWriteToAdmin);
 router.get('/', async (req, res, next) => {
   try {
     const sb = requireSupabase();
-    const { batchId, limit } = req.query;
-    const pageLimit = Number(limit) > 0 ? Math.min(Number(limit), 100) : 50;
+    const { batchId } = req.query;
+    const { page, limit, offset } = parsePagination(req.query);
 
-    let query = sb.from('placements').select('*');
-    if (batchId) query = query.eq('batch_id', batchId);
-    query = query.order('created_at', { ascending: false }).range(0, pageLimit - 1);
+    // Build count query
+    let countQuery = sb.from('placements').select('*', { count: 'exact', head: true });
+    if (batchId) countQuery = countQuery.eq('batch_id', batchId);
 
-    const { data, error } = await query;
+    // Build data query
+    let dataQuery = sb.from('placements').select('*');
+    if (batchId) dataQuery = dataQuery.eq('batch_id', batchId);
+
+    // Execute queries in parallel
+    const [{ count }, { data, error }] = await Promise.all([
+      countQuery,
+      applyPagination(
+        dataQuery.order('created_at', { ascending: false }),
+        offset,
+        limit
+      )
+    ]);
+
     if (error) throw error;
-    res.json({ data });
+    res.json(formatPaginatedResponse(data, count || 0, page, limit));
   } catch (err) {
     next(err);
   }

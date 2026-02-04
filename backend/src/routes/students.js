@@ -1,9 +1,44 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { requireSupabase, serviceKeyRole } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
+import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
 
 const router = Router();
+
+// Input validation schemas
+const studentCreateSchema = z.object({
+  enrollment_number: z.string().min(1, 'Enrollment number is required'),
+  first_name: z.string().min(1, 'First name is required').max(100),
+  last_name: z.string().min(1, 'Last name is required').max(100),
+  email: z.string().email().optional().nullable(),
+  phone_number: z.string().max(20).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  phoneNumber: z.string().max(20).optional().nullable(),
+  batch_id: z.string().uuid().optional(),
+  batch: z.string().optional(),
+  course_id: z.string().uuid().optional(),
+  course: z.string().optional(),
+  enrollment_date: z.string().refine(
+    (date) => !isNaN(Date.parse(date)),
+    'Invalid enrollment date'
+  ).optional(),
+  admissionDate: z.string().optional(),
+  enrollmentDate: z.string().optional(),
+  residential_address: z.string().max(500).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  emergency_contact_name: z.string().max(100).optional().nullable(),
+  guardianName: z.string().max(100).optional().nullable(),
+  emergency_contact_phone: z.string().max(20).optional().nullable(),
+  guardianPhone: z.string().max(20).optional().nullable(),
+  total_fees: z.number().nonnegative('Total fees must be non-negative').optional(),
+  totalFees: z.number().optional(),
+  discount: z.number().nonnegative('Discount must be non-negative').optional(),
+  discount_amount: z.number().optional(),
+  status: z.enum(['active', 'inactive', 'graduated']).optional(),
+  notes: z.string().max(1000).optional().nullable(),
+});
 
 // Apply authentication and role checking to all student routes
 router.use(authenticateToken);
@@ -15,16 +50,26 @@ router.get('/', async (req, res, next) => {
   try {
     const sb = requireSupabase();
     console.log('[students] serviceKeyRole:', serviceKeyRole);
-    const { batchId, limit } = req.query;
-    const pageLimit = Number(limit) > 0 ? Math.min(Number(limit), 100) : 50;
+    const { batchId } = req.query;
+    
+    // Validate query parameters
+    if (batchId && !z.string().uuid().safeParse(batchId).success) {
+      return res.status(400).json({ error: 'Invalid batch ID format' });
+    }
+    
+    // Parse pagination parameters
+    const { page, limit, offset } = parsePagination(req.query);
 
-    let query = sb.from('students').select('*');
+    let query = sb.from('students').select('*', { count: 'exact' });
     if (batchId) query = query.eq('batch_id', batchId);
-    query = query.order('created_at', { ascending: false }).range(0, pageLimit - 1);
+    query = query.order('created_at', { ascending: false });
+    
+    // Apply pagination
+    const { data, count, error } = await applyPagination(query, offset, limit);
 
-    const { data, error } = await query;
     if (error) throw error;
-    res.json({ data });
+    
+    res.json(formatPaginatedResponse(data, count || 0, page, limit));
   } catch (err) {
     next(err);
   }
@@ -35,6 +80,11 @@ router.get('/:id', async (req, res, next) => {
   try {
     const sb = requireSupabase();
     const { id } = req.params;
+    
+    // Validate ID format
+    if (!z.string().uuid().safeParse(id).success) {
+      return res.status(400).json({ error: 'Invalid student ID format' });
+    }
     
     const { data, error } = await sb
       .from('students')
@@ -52,11 +102,21 @@ router.get('/:id', async (req, res, next) => {
 // POST create new student
 router.post('/', async (req, res, next) => {
   try {
+    // Validate input
+    const validation = studentCreateSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+
     const sb = requireSupabase();
-    const studentData = req.body;
+    const studentData = validation.data;
     
     console.log('[students] Creating student:', studentData);
     console.log('[students] serviceKeyRole before insert:', serviceKeyRole);
+    
     // Accept either batch_id or batch (name) and course_id or course (code/name)
     const payload = { ...studentData };
 
@@ -88,7 +148,7 @@ router.post('/', async (req, res, next) => {
       const { data: courseRow, error: courseErr } = await sb
         .from('courses')
         .select('id')
-        .or(`course_code.eq.${courseKey},course_name.eq.${courseKey}`)
+        .or(`course_code.eq.${encodeURIComponent(courseKey)},course_name.eq.${encodeURIComponent(courseKey)}`)
         .maybeSingle();
       if (courseErr) {
         console.error('[students] Course lookup error:', courseErr);
@@ -116,13 +176,21 @@ router.post('/', async (req, res, next) => {
       throw err;
     }
 
+    // Validate total fees
+    const totalFees = payload.total_fees || payload.totalFees;
+    if (totalFees && totalFees > 10000000) {
+      const err = new Error('Total fees exceeds maximum allowed value (10,000,000)');
+      err.status = 400;
+      throw err;
+    }
+
     // Map some common frontend keys to DB column names if necessary
     // If the client sent snake_case already, these will be no-ops
     const phone = payload.phone_number || payload.phone || payload.phoneNumber || '';
     const dbPayload = {
-      enrollment_number: payload.enrollment_number || payload.enrollmentNumber,
-      first_name: payload.first_name || payload.firstName,
-      last_name: payload.last_name || payload.lastName,
+      enrollment_number: payload.enrollment_number,
+      first_name: payload.first_name,
+      last_name: payload.last_name,
       email: payload.email || null,
       phone_number: phone ? phone : null, // Convert empty string to null
       batch_id: payload.batch_id,
@@ -131,7 +199,7 @@ router.post('/', async (req, res, next) => {
       residential_address: payload.residential_address || payload.address || null,
       emergency_contact_name: payload.emergency_contact_name || payload.guardianName || null,
       emergency_contact_phone: payload.emergency_contact_phone || payload.guardianPhone || null,
-      total_fees: payload.total_fees || payload.totalFees,
+      total_fees: totalFees,
       discount: payload.discount !== undefined ? payload.discount : (payload.discount_amount || 0),
       status: payload.status || 'active',
       notes: payload.notes || null,
