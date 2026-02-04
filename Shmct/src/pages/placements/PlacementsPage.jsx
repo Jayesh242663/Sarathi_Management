@@ -1,5 +1,5 @@
 import { useMemo, useState, Fragment } from 'react';
-import { Briefcase, Globe2, IndianRupee, TrendingUp, ChevronDown, Plus, DollarSign, Calendar, CreditCard, MessageSquare, MapPin, Building2, X, Edit2, Save } from 'lucide-react';
+import { Briefcase, Globe2, IndianRupee, TrendingUp, ChevronDown, Plus, DollarSign, Calendar, CreditCard, MessageSquare, MapPin, Building2, X, Edit2, Save, Search, Filter } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDate, getInitials, formatNumberWithCommas } from '../../utils/formatters';
@@ -19,6 +19,11 @@ const PlacementsPage = () => {
   const [savingInstallment, setSavingInstallment] = useState(false);
   const [editingCosts, setEditingCosts] = useState(null);
   const [costForm, setCostForm] = useState({ country: '', companyCosting: '', myCosting: '' });
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [countryFilter, setCountryFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   const formatPreview = (val) => {
     const raw = (val ?? '').toString().replace(/,/g, '').trim();
@@ -37,8 +42,18 @@ const PlacementsPage = () => {
     return legacy[value] || 'N/A';
   };
 
+  // Get unique countries for filter
+  const uniqueCountries = useMemo(() => {
+    const countries = placements
+      .map(p => p.country)
+      .filter(c => c && c.trim())
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort();
+    return countries;
+  }, [placements]);
+
   const placementsWithStudent = useMemo(() => {
-    return placements.map((placement) => {
+    const allPlacements = placements.map((placement) => {
       const student = students.find((s) => s.id === placement.studentId);
       const installmentsPaid = (placement.installments || []).reduce((sum, inst) => sum + (inst.amount || 0), 0);
       const totalPaid = installmentsPaid;
@@ -62,7 +77,22 @@ const PlacementsPage = () => {
         collectionPercent: myCosting ? Math.min(100, Math.round((totalPaid / myCosting) * 100)) : 0,
       };
     });
-  }, [placements, students]);
+
+    // Apply search and filters
+    return allPlacements.filter((placement) => {
+      // Search filter
+      const matchesSearch = searchQuery === '' ||
+        placement.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (placement.studentEmail || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (placement.country || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (placement.company || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Country filter
+      const matchesCountry = countryFilter === 'all' || placement.country === countryFilter;
+
+      return matchesSearch && matchesCountry;
+    });
+  }, [placements, students, searchQuery, countryFilter]);
 
   const totals = useMemo(() => {
     const stats = placementsWithStudent.reduce(
@@ -322,6 +352,7 @@ const PlacementsPage = () => {
         </div>
       </div>
 
+      {/* Stats Section */}
       <div className="placements-stats">
         <div className="stat-card">
           <div className="stat-icon blue">
@@ -361,7 +392,118 @@ const PlacementsPage = () => {
         </div>
       </div>
 
+      {/* Table Section with integrated search */}
       <div className="placements-table-card">
+        {/* Search and Filter Bar */}
+        <div className="placements-table-controls">
+          <div className="placements-search-bar">
+            <div className="placements-search-input-group">
+              <Search className="w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by student name, email, country, company..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="placements-search-input"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="placements-search-clear"
+                  title="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="placements-filter-actions">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="placements-filter-toggle"
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+                {countryFilter !== 'all' && (
+                  <span className="placements-filter-badge">1</span>
+                )}
+              </button>
+
+              {(searchQuery || countryFilter !== 'all') && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCountryFilter('all');
+                  }}
+                  className="placements-clear-all-btn"
+                  title="Clear all filters and search"
+                >
+                  <X className="w-4 h-4" />
+                  Clear All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="placements-filter-panel">
+              <div className="placements-filter-group">
+                <label className="placements-filter-label">Country</label>
+                <select
+                  value={countryFilter}
+                  onChange={(e) => setCountryFilter(e.target.value)}
+                  className="placements-filter-select"
+                >
+                  <option value="all">All Countries</option>
+                  {uniqueCountries.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Active Filters Display */}
+          {(searchQuery || countryFilter !== 'all') && (
+            <div className="placements-active-filters">
+              <div className="placements-filter-chips">
+                {searchQuery && (
+                  <div className="placements-filter-chip">
+                    <span className="filter-chip-label">Search: "{searchQuery}"</span>
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="filter-chip-remove"
+                      title="Remove filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {countryFilter !== 'all' && (
+                  <div className="placements-filter-chip">
+                    <span className="filter-chip-label">Country: {countryFilter}</span>
+                    <button
+                      onClick={() => setCountryFilter('all')}
+                      className="filter-chip-remove"
+                      title="Remove filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="placements-results-count">
+                <span className="results-count-text">
+                  Showing <strong>{placementsWithStudent.length}</strong> of <strong>{placements.length}</strong> placements
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="table-wrapper">
           <table className="placements-table">
             <thead>
