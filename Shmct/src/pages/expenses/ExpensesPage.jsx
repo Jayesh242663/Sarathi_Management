@@ -24,7 +24,7 @@ const mapExpenseFromSupabase = (expense) => ({
 });
 
 const ExpensesPage = () => {
-  const { expenses, deleteExpense, currentBatch, batches } = useStudents();
+  const { expenses, deleteExpense } = useStudents();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
@@ -32,27 +32,15 @@ const ExpensesPage = () => {
   
   const isAuditor = user?.role === 'auditor';
 
-  // Get batch-filtered expenses
-  const batchExpenses = useMemo(() => {
-    // Map Supabase data to component format
-    const mappedExpenses = (expenses || []).map(mapExpenseFromSupabase);
-    
-    if (currentBatch === 'all') {
-      return mappedExpenses;
-    }
-    
-    // Convert batch name to batch ID
-    const batchObj = batches.find((b) => b.batch_name === currentBatch);
-    const batchId = batchObj ? batchObj.id : null;
-    
-    if (!batchId) return [];
-    return mappedExpenses.filter((exp) => exp.batchId === batchId);
-  }, [expenses, currentBatch, batches]);
+  // Use all expenses (no batch filtering) to show every transaction
+  const allExpenses = useMemo(() => {
+    return (expenses || []).map(mapExpenseFromSupabase);
+  }, [expenses]);
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const debitExpenses = batchExpenses.filter((exp) => exp.transactionType === 'debit');
-    const creditExpenses = batchExpenses.filter((exp) => exp.transactionType === 'credit');
+    const debitExpenses = allExpenses.filter((exp) => exp.transactionType === 'debit');
+    const creditExpenses = allExpenses.filter((exp) => exp.transactionType === 'credit');
 
     const totalDebit = debitExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const totalCredit = creditExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -104,11 +92,11 @@ const ExpensesPage = () => {
 
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
-    const monthlyDebits = batchExpenses.filter((exp) => {
+    const monthlyDebits = allExpenses.filter((exp) => {
       const expDate = new Date(exp.date);
       return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear && exp.transactionType === 'debit';
     });
-    const monthlyCredits = batchExpenses.filter((exp) => {
+    const monthlyCredits = allExpenses.filter((exp) => {
       const expDate = new Date(exp.date);
       return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear && exp.transactionType === 'credit';
     });
@@ -121,7 +109,7 @@ const ExpensesPage = () => {
       totalCredit,
       netAmount,
       monthlyTotal,
-      transactionCount: batchExpenses.length,
+      transactionCount: allExpenses.length,
       // New metrics for enhanced dashboard
       businessIncome,
       businessExpenses,
@@ -131,7 +119,7 @@ const ExpensesPage = () => {
       cashInHand,
       bankBalance,
     };
-  }, [batchExpenses]);
+  }, [allExpenses]);
 
   const handleEdit = (expense) => {
     setSelectedExpense(expense);
@@ -292,7 +280,7 @@ const ExpensesPage = () => {
           <h2 className="expenses-section-title">Transaction History</h2>
         </div>
         <ExpensesTable
-          expenses={batchExpenses}
+          expenses={allExpenses}
           onEdit={handleEdit}
           onDelete={handleDelete}
           loading={loading}

@@ -236,20 +236,41 @@ export const StudentProvider = ({ children }) => {
         auditLogs = [],
       } = data;
 
-      // Fetch expenses separately
+      // Fetch expenses separately (paginate to load all)
       let expenses = [];
       try {
-        const expensesResponse = await fetch(`${API_BASE}/expenses?limit=500`, {
-          method: 'GET',
-          headers: getAuthHeaders(),
-        });
-        if (expensesResponse.ok) {
+        const pageSize = 100;
+        let page = 1;
+        let hasNextPage = true;
+
+        while (hasNextPage) {
+          const expensesResponse = await fetch(`${API_BASE}/expenses?limit=${pageSize}&page=${page}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+          });
+
+          if (!expensesResponse.ok) {
+            console.warn('[StudentContext] Failed to load expenses:', expensesResponse.status);
+            break;
+          }
+
           const expensesData = await expensesResponse.json();
-          expenses = expensesData.data || [];
-          console.log('[StudentContext] Expenses loaded:', expenses.length);
-        } else {
-          console.warn('[StudentContext] Failed to load expenses:', expensesResponse.status);
+          const pageData = expensesData.data || [];
+          const pagination = expensesData.pagination || {};
+
+          expenses = expenses.concat(pageData);
+          if (typeof pagination.hasNextPage === 'boolean') {
+            hasNextPage = pagination.hasNextPage;
+            if (!hasNextPage && pageData.length === pageSize) {
+              hasNextPage = true;
+            }
+          } else {
+            hasNextPage = pageData.length === pageSize;
+          }
+          page += 1;
         }
+
+        console.log('[StudentContext] Expenses loaded:', expenses.length);
       } catch (expenseError) {
         console.warn('[StudentContext] Error loading expenses:', expenseError);
         // Continue loading other data even if expenses fail
