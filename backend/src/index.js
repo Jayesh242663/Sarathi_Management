@@ -160,14 +160,28 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// Basic rate limit for auth routes (much stricter)
+// Strict rate limit for login/register (prevent brute force)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 5,                     // 5 attempts per 15 min (was 100)
+  max: 5,                     // 5 attempts per 15 min
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many login attempts, please try again after 15 minutes'
+  message: 'Too many login attempts, please try again after 15 minutes',
+  skip: (req) => {
+    // Skip this limiter for session/refresh endpoints
+    return req.path === '/session' || req.path === '/refresh';
+  }
+});
+
+// Lenient rate limit for session/token refresh (20 per minute)
+const sessionLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,    // 1 minute
+  max: 20,                     // Allow 20 requests per minute for session checks
+  skipSuccessfulRequests: false,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many session checks. Please wait a moment.'
 });
 
 // Global rate limiter for all API endpoints
@@ -181,6 +195,9 @@ const globalLimiter = rateLimit({
 
 // API v1 routes - stable, versioned
 app.use('/api/v1/', globalLimiter);
+// Auth routes with granular rate limiting
+app.use('/api/v1/auth/session', sessionLimiter, authRouter);
+app.use('/api/v1/auth/refresh', sessionLimiter, authRouter);
 app.use('/api/v1/auth', authLimiter, authRouter);  // No CSRF on auth endpoints
 app.use('/api/v1/courses', csrfProtection, coursesRouter);
 app.use('/api/v1/batches', csrfProtection, batchesRouter);
@@ -192,6 +209,9 @@ app.use('/api/v1/placement-installments', csrfProtection, placementInstallmentsR
 app.use('/api/v1/data', csrfProtection, dataRouter);
 
 // Backward compatibility - legacy routes (deprecated)
+// Auth routes with granular rate limiting
+app.use('/api/auth/session', sessionLimiter, authRouter);
+app.use('/api/auth/refresh', sessionLimiter, authRouter);
 app.use('/api/auth', authLimiter, authRouter);  // No CSRF on auth endpoints
 app.use('/api/courses', csrfProtection, coursesRouter);
 app.use('/api/batches', csrfProtection, batchesRouter);
