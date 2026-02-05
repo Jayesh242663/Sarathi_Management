@@ -7,6 +7,12 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+const nativeFetch = globalThis.fetch.bind(globalThis);
+const CSRF_HEADER = 'x-csrf-token';
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+let csrfTokenCache = null;
+let csrfTokenPromise = null;
+
 // Token refresh state
 let isRefreshing = false;
 let refreshSubscribers = [];
@@ -37,6 +43,55 @@ function getHeaders() {
   };
 }
 
+async function loadCsrfToken() {
+  if (csrfTokenCache) return csrfTokenCache;
+  if (csrfTokenPromise) return csrfTokenPromise;
+
+  csrfTokenPromise = nativeFetch(`${API_BASE}/csrf-token`, {
+    method: 'GET',
+    headers: getHeaders(),
+    credentials: 'include'
+  })
+    .then(async (response) => {
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data?.csrfToken || null;
+    })
+    .catch(() => null)
+    .finally(() => {
+      csrfTokenPromise = null;
+    });
+
+  csrfTokenCache = await csrfTokenPromise;
+  return csrfTokenCache;
+}
+
+async function apiFetch(url, options = {}, retry = false) {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = { ...getHeaders(), ...(options.headers || {}) };
+  const finalOptions = {
+    ...options,
+    headers,
+    credentials: 'include'
+  };
+
+  if (WRITE_METHODS.has(method)) {
+    const csrfToken = await loadCsrfToken();
+    if (csrfToken) headers[CSRF_HEADER] = csrfToken;
+  }
+
+  const response = await nativeFetch(url, finalOptions);
+  if (!retry && WRITE_METHODS.has(method) && response.status === 403) {
+    csrfTokenCache = null;
+    await loadCsrfToken();
+    return apiFetch(url, options, true);
+  }
+
+  return response;
+}
+
+const fetch = apiFetch;
+
 // Handle 401 errors and attempt token refresh
 async function handleUnauthorized(originalRequest) {
   const refreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
@@ -56,7 +111,8 @@ async function handleUnauthorized(originalRequest) {
       const response = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken })
+        body: JSON.stringify({ refreshToken }),
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -503,6 +559,14 @@ const HttpClient = {
       ...options,
     });
     if (!response.ok) {
+      if (endpoint === '/auth/refresh') {
+        removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+        removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+        removeFromStorage(STORAGE_KEYS.USER);
+        if (logoutHandler) {
+          logoutHandler();
+        }
+      }
       const errorData = await response.json().catch(() => ({}));
       const error = new Error(errorData.error || 'Request failed');
       error.response = { status: response.status, data: errorData };

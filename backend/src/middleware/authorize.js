@@ -10,6 +10,8 @@ if (SUPER_ADMIN_EMAILS.length === 0) {
 }
 
 const isSuperAdminEmail = (email = '') => SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+const normalizeRole = (role = '') => role.toString().trim().toLowerCase();
+const APP_METADATA_ROLES = new Set(['administrator', 'auditor']);
 
 /**
  * Middleware to check user role from user_profiles table
@@ -45,6 +47,30 @@ export const attachUserRole = async (req, res, next) => {
       return next();
     }
 
+    const appMetadataRole = normalizeRole(req.user.app_metadata?.role);
+    if (APP_METADATA_ROLES.has(appMetadataRole)) {
+      req.user.role = appMetadataRole;
+      req.user.fullName = req.user.user_metadata?.name || req.user.email;
+
+      // Ensure a profile row exists for consistency
+      try {
+        const sb = requireSupabase();
+        await sb
+          .from('user_profiles')
+          .upsert({
+            id: req.user.id,
+            full_name: req.user.fullName,
+            role: appMetadataRole,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+      } catch (upsertError) {
+        console.error('Error ensuring app metadata role profile:', upsertError);
+      }
+
+      return next();
+    }
+
     // Fetch user profile with role
     try {
       const sb = requireSupabase();
@@ -60,12 +86,40 @@ export const attachUserRole = async (req, res, next) => {
       }
 
       if (!profile) {
-        return res.status(404).json({ error: 'User profile not found' });
-      }
+        // Auto-create profile for users that don't have one
+        // This handles cases where the database trigger didn't run
+        console.log('[authorize] No profile found for user, creating default profile:', req.user.id);
+        
+        try {
+          const { data: newProfile, error: insertError } = await sb
+            .from('user_profiles')
+            .insert({
+              id: req.user.id,
+              full_name: req.user.user_metadata?.name || req.user.email?.split('@')[0] || 'User',
+              role: 'auditor',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
 
-      // Attach role and profile info to req.user
-      req.user.role = profile.role;
-      req.user.fullName = profile.full_name;
+          if (insertError) {
+            console.error('[authorize] Error creating user profile:', insertError);
+            return res.status(500).json({ error: 'Failed to create user profile' });
+          }
+
+          console.log('[authorize] Profile created successfully for:', req.user.id);
+          req.user.role = newProfile.role;
+          req.user.fullName = newProfile.full_name;
+        } catch (createErr) {
+          console.error('[authorize] Exception creating profile:', createErr);
+          return res.status(500).json({ error: 'Failed to create user profile' });
+        }
+      } else {
+        // Attach role and profile info to req.user
+        req.user.role = profile.role;
+        req.user.fullName = profile.full_name;
+      }
 
       return next();
     } catch (err) {

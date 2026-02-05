@@ -5,14 +5,16 @@
 import { doubleCsrf } from 'csrf-csrf';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const csrfCookieName = isProduction ? '__Host-psifi.x-csrf-token' : 'psifi.x-csrf-token';
 
 // Configure CSRF protection
 const {
-  generateToken,
+  generateCsrfToken: generateCsrfTokenInternal,
   doubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET || 'default-csrf-secret-change-in-production',
-  cookieName: '__Host-psifi.x-csrf-token',
+  getSessionIdentifier: (req) => req.user?.id || req.ip || 'anonymous',
+  cookieName: csrfCookieName,
   cookieOptions: {
     httpOnly: true,
     sameSite: 'strict',
@@ -21,7 +23,7 @@ const {
   },
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+  getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'],
 });
 
 // CSRF protection middleware
@@ -32,7 +34,7 @@ export const csrfProtection = doubleCsrfProtection;
  * Call this for endpoints that need to provide CSRF tokens
  */
 export const generateCsrfToken = (req, res) => {
-  const token = generateToken(req, res);
+  const token = generateCsrfTokenInternal(req, res);
   res.json({ csrfToken: token });
 };
 

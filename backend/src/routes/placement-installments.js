@@ -97,7 +97,9 @@ router.post('/', async (req, res, next) => {
     try {
       const created = data?.[0];
       if (created) {
-        // Fetch student to get batch_id
+        console.log('[placement-installments] Starting audit log creation for installment:', created.id);
+        
+        // Fetch student to get batch_id - CRITICAL: Always populate batch_id
         let batchId = null;
         try {
           const { data: studentData, error: studentError } = await sb
@@ -105,34 +107,69 @@ router.post('/', async (req, res, next) => {
             .select('batch_id')
             .eq('id', created.student_id)
             .single();
-          if (!studentError && studentData) {
+          
+          if (!studentError && studentData && studentData.batch_id) {
             batchId = studentData.batch_id;
+            console.log('[placement-installments] Found batch_id from user_profiles:', batchId);
+          } else {
+            console.warn('[placement-installments] No batch_id in user_profiles, trying placement record');
+            
+            // Fallback: Get batch_id from placement via its student's batch
+            const { data: placementData, error: placementError } = await sb
+              .from('placements')
+              .select('student_id')
+              .eq('id', created.placement_id)
+              .single();
+            
+            if (!placementError && placementData) {
+              const { data: student2, error: student2Error } = await sb
+                .from('user_profiles')
+                .select('batch_id')
+                .eq('id', placementData.student_id)
+                .single();
+              
+              if (!student2Error && student2 && student2.batch_id) {
+                batchId = student2.batch_id;
+                console.log('[placement-installments] Found batch_id from placement student:', batchId);
+              }
+            }
+          }
+          
+          if (!batchId) {
+            console.warn('[placement-installments] WARNING: Could not find batch_id for student:', created.student_id);
           }
         } catch (e) {
-          console.warn('[placement-installments] Could not fetch student batch:', e);
+          console.warn('[placement-installments] Exception fetching batch_id:', e);
         }
 
-        const { error: auditError } = await sb.from('audit_logs').insert([
-          {
-            action: 'PLACEMENT_PAYMENT',
-            entity_type: 'PLACEMENT',
-            entity_id: created.placement_id,
-            entity_name: 'Placement Payment',
-            batch_id: batchId,
-            amount: created.amount,
-            details: {
-              installmentNumber: created.installment_number,
-              paymentMethod: created.payment_method,
-              bankMoneyReceived: created.bank_account || null,
-              chequeNumber: created.cheque_number || null,
-              remarks: created.notes || '',
-              studentId: created.student_id,
-            },
-            transaction_date: created.payment_date || created.due_date || new Date().toISOString().slice(0,10),
+        const auditPayload = {
+          action: 'PLACEMENT_PAYMENT',
+          entity_type: 'PLACEMENT',
+          entity_id: created.placement_id,
+          entity_name: 'Placement Payment',
+          batch_id: batchId,
+          amount: created.amount,
+          details: {
+            installmentNumber: created.installment_number,
+            paymentMethod: created.payment_method,
+            bankMoneyReceived: created.bank_account || null,
+            chequeNumber: created.cheque_number || null,
+            remarks: created.notes || '',
+            studentId: created.student_id,
           },
-        ]);
+          transaction_date: created.payment_date || created.due_date || new Date().toISOString().slice(0,10),
+        };
+        
+        console.log('[placement-installments] Inserting audit log with payload:', JSON.stringify(auditPayload, null, 2));
+        
+        const { data: auditData, error: auditError } = await sb.from('audit_logs').insert([auditPayload]).select();
 
-        if (auditError) throw auditError;
+        if (auditError) {
+          console.error('[placement-installments] Audit log insert error:', auditError);
+          throw auditError;
+        }
+        
+        console.log('[placement-installments] Audit log created successfully:', auditData);
       }
     } catch (auditError) {
       console.error('[placement-installments] Failed to write audit log:', auditError);
