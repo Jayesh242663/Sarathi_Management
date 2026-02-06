@@ -15,19 +15,15 @@ export const AuthProvider = ({ children }) => {
   const clearAuthState = () => {
     setUser(null);
     removeFromStorage(STORAGE_KEYS.USER);
-    removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-    removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+    // NOTE: Tokens are stored in httpOnly cookies (set by server)
+    // They are automatically cleared when logout endpoint is called
   };
 
   // Logout function - defined first so it can be used in useEffect
   const logout = async () => {
     try {
-      const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-      if (token) {
-        await apiService.post('/auth/logout', {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+      // Call logout endpoint which clears httpOnly cookies server-side
+      await apiService.post('/auth/logout', {});
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -72,55 +68,16 @@ export const AuthProvider = ({ children }) => {
     // Check for existing session - PERSISTENT LOGIN
     const initializeAuth = async () => {
       const storedUser = getFromStorage(STORAGE_KEYS.USER);
-      const storedToken = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-      const storedRefreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
       
-      if (storedUser && storedToken) {
-        // Check if token is expired or about to expire (within 5 minutes)
-        if (isTokenExpiredOrExpiring(storedToken)) {
-          console.log('[AuthContext] Token expired or expiring, attempting refresh...');
-          
-          if (storedRefreshToken) {
-            try {
-              // Attempt to refresh the token proactively
-              const response = await apiService.post('/auth/refresh', {
-                refreshToken: storedRefreshToken
-              });
-              
-              if (response.accessToken) {
-                const newToken = response.accessToken;
-                const newRefreshToken = response.session?.refresh_token;
-                
-                // Update stored tokens
-                setToStorage(STORAGE_KEYS.AUTH_TOKEN, newToken);
-                if (newRefreshToken) {
-                  setToStorage(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-                }
-                resetAuthInvalid();
-                console.log('[AuthContext] Token refreshed successfully');
-              }
-            } catch (error) {
-              console.error('[AuthContext] Token refresh failed:', error.message);
-              // If refresh fails, logout
-              forceLogout();
-              return;
-            }
-          } else {
-            // No refresh token available, logout
-            console.log('[AuthContext] No refresh token available, logging out');
-            forceLogout();
-            return;
-          }
-        }
-        
-        // Restore user immediately for persistent login
+      if (storedUser) {
+        // httpOnly cookies are automatically sent by browser
+        // No need to check token expiration - server handles it
+        console.log('[AuthContext] Restoring user session from storage');
         setUser(storedUser);
         
         // Verify session in background (non-blocking)
-        // Only logout if token is definitively invalid (401)
-        verifySession(storedToken).catch(() => {
-          // Silent fail - keep user logged in even if verification fails
-          // Token refresh will handle expired tokens automatically
+        verifySession().catch(() => {
+          // Silent fail - keep user logged in
         });
       }
       setLoading(false);
@@ -129,11 +86,10 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const verifySession = async (token) => {
+  const verifySession = async () => {
     try {
-      const response = await apiService.get('/auth/session', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // httpOnly cookies are automatically sent by browser
+      const response = await apiService.get('/auth/session');
       if (response.user) {
         const userData = {
           id: response.user.id,
@@ -145,15 +101,11 @@ export const AuthProvider = ({ children }) => {
         setToStorage(STORAGE_KEYS.USER, userData);
       }
     } catch (error) {
-      // Only logout for definitive auth failures (401)
-      // Network errors or server issues should not log user out
       if (error?.response?.status === 401 || error?.status === 401) {
         console.error('Session invalid (401), logging out');
-        logout();
+        forceLogout();
       } else {
-        // For other errors (network, 500, etc.), keep user logged in
-        // The automatic token refresh will handle expired tokens
-        console.warn('Session verification failed (non-auth error), keeping user logged in:', error.message);
+        console.warn('Session verification failed, keeping user logged in:', error.message);
       }
     }
   };
@@ -178,15 +130,10 @@ export const AuthProvider = ({ children }) => {
         console.log('[AuthContext] Setting user:', userData);
         setUser(userData);
         setToStorage(STORAGE_KEYS.USER, userData);
-        setToStorage(STORAGE_KEYS.AUTH_TOKEN, response.accessToken);
-        
-        // Store refresh token for automatic token refresh
-        if (response.session?.refresh_token) {
-          setToStorage(STORAGE_KEYS.REFRESH_TOKEN, response.session.refresh_token);
-        }
+        // NOTE: Tokens are now in httpOnly cookies, not localStorage
         
         resetAuthInvalid();
-        console.log('[AuthContext] Login successful');
+        console.log('[AuthContext] Login successful - tokens in secure httpOnly cookies');
         return { success: true };
       }
       

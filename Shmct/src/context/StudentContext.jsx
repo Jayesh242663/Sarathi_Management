@@ -5,13 +5,19 @@ import { getFromStorage, setToStorage, removeFromStorage, getCurrentAcademicBatc
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// Helper to get authentication headers
-const getAuthHeaders = () => {
-  const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
+// Helper to get authentication headers (httpOnly cookies are sent automatically)
+const getAuthHeaders = () => ({
+  'Content-Type': 'application/json',
+});
+
+// Helper to ensure cookies are sent with every request
+const authFetch = (url, options = {}) => {
+  const headers = { ...getAuthHeaders(), ...(options.headers || {}) };
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 };
 
 const StudentContext = createContext(null);
@@ -192,11 +198,10 @@ export const StudentProvider = ({ children }) => {
   const loadSupabaseData = useCallback(async (retryCount = 0) => {
     try {
       // Verify authentication before loading data
-      const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
       const user = getFromStorage(STORAGE_KEYS.USER);
       
-      if (!token || !user) {
-        console.warn('[StudentContext] SECURITY: Attempt to load data without authentication blocked.', 'Token:', !!token, 'User:', !!user);
+      if (!user) {
+        console.warn('[StudentContext] SECURITY: Attempt to load data without authentication blocked.', 'User:', !!user);
         setDataLoadError('Authentication required. Please log in.');
         setLoading(false);
         return;
@@ -206,7 +211,7 @@ export const StudentProvider = ({ children }) => {
       setDataLoadError(null);
       console.log('[StudentContext] Loading authenticated data for user:', user.email, `(attempt ${retryCount + 1})`);
 
-      const response = await fetch(`${API_BASE}/data/snapshot`, {
+      const response = await authFetch(`${API_BASE}/data/snapshot`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
@@ -246,7 +251,7 @@ export const StudentProvider = ({ children }) => {
         let hasNextPage = true;
 
         while (hasNextPage) {
-          const expensesResponse = await fetch(`${API_BASE}/expenses?limit=${pageSize}&page=${page}`, {
+          const expensesResponse = await authFetch(`${API_BASE}/expenses?limit=${pageSize}&page=${page}`, {
             method: 'GET',
             headers: getAuthHeaders(),
           });
@@ -349,8 +354,6 @@ export const StudentProvider = ({ children }) => {
       setDataLoadError(err.message);
 
       if (err?.isAuthError || /authentication required|session expired/i.test(err?.message || '')) {
-        removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-        removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
         removeFromStorage(STORAGE_KEYS.USER);
         setStudents([]);
         setPayments([]);
@@ -379,14 +382,13 @@ export const StudentProvider = ({ children }) => {
 
   // Load data on mount and when auth token becomes available
   useEffect(() => {
-    const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
     const user = getFromStorage(STORAGE_KEYS.USER);
     
-    if (token && user) {
+    if (user) {
       console.log('[StudentContext] Authenticated user detected. Loading data for:', user.email);
       loadSupabaseData();
     } else {
-      console.log('[StudentContext] Not authenticated. Skipping data load. Token:', !!token, 'User:', !!user);
+      console.log('[StudentContext] Not authenticated. Skipping data load. User:', !!user);
       setLoading(false);
       setDataLoadError(null);
       // Clear all data if not authenticated
@@ -403,11 +405,11 @@ export const StudentProvider = ({ children }) => {
   // Listen for storage changes (when user logs in from another tab or after login)
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === STORAGE_KEYS.AUTH_TOKEN && e.newValue) {
-        console.log('[StudentContext] Auth token detected. Reloading data.');
+      if (e.key === STORAGE_KEYS.USER && e.newValue) {
+        console.log('[StudentContext] User detected. Reloading data.');
         loadSupabaseData();
-      } else if (e.key === STORAGE_KEYS.AUTH_TOKEN && !e.newValue) {
-        console.log('[StudentContext] Auth token removed. Clearing all data.');
+      } else if (e.key === STORAGE_KEYS.USER && !e.newValue) {
+        console.log('[StudentContext] User removed. Clearing all data.');
         setStudents([]);
         setPayments([]);
         setPlacements([]);
@@ -990,7 +992,7 @@ export const StudentProvider = ({ children }) => {
         batchId = batch ? batch.id : null;
       }
 
-      const response = await fetch(`${API_BASE}/expenses`, {
+      const response = await authFetch(`${API_BASE}/expenses`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -1047,7 +1049,7 @@ export const StudentProvider = ({ children }) => {
 
   const updateExpense = useCallback(async (id, expenseData) => {
     try {
-      const response = await fetch(`${API_BASE}/expenses/${id}`, {
+      const response = await authFetch(`${API_BASE}/expenses/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(expenseData),
@@ -1085,7 +1087,7 @@ export const StudentProvider = ({ children }) => {
       const expense = expenses.find((exp) => exp.id === id);
       if (!expense) return;
 
-      const response = await fetch(`${API_BASE}/expenses/${id}`, {
+      const response = await authFetch(`${API_BASE}/expenses/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });

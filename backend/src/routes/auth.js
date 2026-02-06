@@ -4,6 +4,10 @@ import supabase from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, requireAdmin } from '../middleware/authorize.js';
 import { logPasswordChange, logRoleChange, logFailedAuth } from '../utils/auditLog.js';
+import { logger } from '../utils/logger.js';
+
+// Environment configuration
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Comma-separated list of super admin emails from environment configuration
 const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
@@ -32,13 +36,13 @@ async function getUserProfile(userId) {
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('[auth] Error fetching user profile', error);
       return null;
     }
 
     return profile || null;
   } catch (err) {
-    console.error('Error fetching user profile:', err);
+    logger.error('[auth] Error fetching user profile', err);
     return null;
   }
 }
@@ -49,7 +53,7 @@ async function ensureUserProfile(userId, email, fullName = '', role = 'auditor')
   try {
     const sb = requireSupabase();
     
-    console.log('[auth] Ensuring user profile for:', userId);
+    logger.debug('[auth] Ensuring user profile');
     
     // First, check if profile exists
     const { data: existing, error: selectError } = await sb
@@ -59,11 +63,11 @@ async function ensureUserProfile(userId, email, fullName = '', role = 'auditor')
       .maybeSingle();
 
     if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = no rows
-      console.error('[auth] Error checking existing profile:', selectError);
+      logger.error('[auth] Error checking existing profile', selectError);
     }
 
     if (existing) {
-      console.log('[auth] Profile exists, updating...');
+      logger.debug('[auth] Profile exists, updating');
       // User profile already exists, update it
       const { data, error } = await sb
         .from('user_profiles')
@@ -77,14 +81,14 @@ async function ensureUserProfile(userId, email, fullName = '', role = 'auditor')
         .single();
 
       if (error) {
-        console.error('[auth] Error updating user profile:', error);
+        logger.error('[auth] Error updating user profile', error);
         return null;
       }
-      console.log('[auth] Profile updated successfully');
+      logger.debug('[auth] Profile updated successfully');
       return data;
     } else {
       // New user, insert the profile
-      console.log('[auth] Creating new profile...');
+      logger.debug('[auth] Creating new profile');
       const { data, error } = await sb
         .from('user_profiles')
         .insert({
@@ -98,18 +102,18 @@ async function ensureUserProfile(userId, email, fullName = '', role = 'auditor')
         .single();
 
       if (error) {
-        console.error('[auth] Error creating user profile:', error);
+        logger.error('[auth] Error creating user profile', error);
         // Log full error details for debugging
-        console.error('[auth] Error code:', error.code);
-        console.error('[auth] Error details:', error.details);
-        console.error('[auth] Error hint:', error.hint);
+        logger.error('[auth] Error code: ' + error.code);
+        logger.error('[auth] Error details: ' + error.details);
+        logger.error('[auth] Error hint: ' + error.hint);
         return null;
       }
-      console.log('[auth] Profile created successfully');
+      logger.debug('[auth] Profile created successfully');
       return data;
     }
   } catch (err) {
-    console.error('[auth] Exception in ensureUserProfile:', err);
+    logger.error('[auth] Exception in ensureUserProfile', err);
     return null;
   }
 }
@@ -122,7 +126,7 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) console.log('[auth] Login attempt for:', email);
+    if (isDev) logger.debug('[auth] Login attempt');
     
     if (!email || !password) {
       const err = new Error('Email and password are required');
@@ -138,7 +142,7 @@ router.post('/login', async (req, res, next) => {
 
     if (error) {
       const isDev = process.env.NODE_ENV !== 'production';
-      if (isDev) console.error('[auth] Supabase auth error:', error);
+      if (isDev) logger.error('[auth] Supabase auth error', error);
       
       // Log failed authentication attempt
       await logFailedAuth(req, email, 'supabase_auth_error');
@@ -148,14 +152,14 @@ router.post('/login', async (req, res, next) => {
       throw err;
     }
 
-    if (isDev) console.log('[auth] User authenticated, fetching profile for:', data.user.id);
+    if (isDev) logger.debug('[auth] User authenticated, fetching profile');
     
     // Get user profile with role
     let profile = await getUserProfile(data.user.id);
 
     // Auto-promote configured super admin emails
     if (isSuperAdminEmail(email)) {
-      if (isDev) console.log('[auth] serviceKeyRole during login:', serviceKeyRole);
+      if (isDev) logger.debug('[auth] serviceKeyRole during login');
       const ensuredProfile = await ensureUserProfile(
         data.user.id,
         email,
@@ -165,7 +169,7 @@ router.post('/login', async (req, res, next) => {
       profile = ensuredProfile || profile;
     }
 
-    if (isDev) console.log('[auth] Login successful for:', email);
+    if (isDev) logger.info('[auth] Login successful');
     
     // Get full name from multiple sources with fallback
     const fullName = profile?.full_name || 
@@ -173,25 +177,39 @@ router.post('/login', async (req, res, next) => {
                      data.user.user_metadata?.full_name ||
                      email.split('@')[0];
     
-    // Return user and session with role
+    // Set httpOnly cookies for tokens (secure, not accessible from JavaScript)
+    // Access token: short-lived (15 minutes)
+    res.cookie('accessToken', data.session.access_token, {
+      httpOnly: true,
+      secure: isProduction,  // HTTPS only in production
+      sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+
+    // Refresh token: long-lived (7 days)
+    res.cookie('refreshToken', data.session.refresh_token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
+
+    // Return user info (no tokens in response body for security)
     res.json({
       success: true,
       user: {
-        ...data.user,
+        id: data.user.id,
+        email: data.user.email,
         role: profile?.role || (isSuperAdminEmail(email) ? 'administrator' : 'auditor'),
         fullName: fullName,
       },
-      session: {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-        expires_in: data.session.expires_in,
-        expires_at: data.session.expires_at,
-      },
-      accessToken: data.session.access_token,
+      message: 'Login successful. Session tokens set securely.',
     });
   } catch (err) {
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) console.error('[auth] Login error:', err.message);
+    if (isDev) logger.error('[auth] Login error', err);
     next(err);
   }
 });
@@ -285,7 +303,7 @@ router.post('/magic-link', async (req, res, next) => {
 
 /**
  * POST /api/auth/logout
- * Logout the current user (invalidate session)
+ * Logout the current user (invalidate session and clear httpOnly cookies)
  */
 router.post('/logout', async (req, res, next) => {
   try {
@@ -296,11 +314,25 @@ router.post('/logout', async (req, res, next) => {
       // Sign out with the provided token
       const { error } = await sb.auth.signOut();
       if (error) {
-        console.error('[logout error]', error);
+        logger.error('[logout error]', error);
       }
     }
 
-    res.json({ success: true, message: 'Logged out successfully' });
+    // Clear httpOnly cookies
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      path: '/',
+    });
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      path: '/',
+    });
+
+    res.json({ success: true, message: 'Logged out successfully. Cookies cleared.' });
   } catch (err) {
     next(err);
   }
@@ -386,10 +418,28 @@ router.post('/refresh', async (req, res, next) => {
       throw err;
     }
 
+    // Set httpOnly cookies for refreshed tokens
+    res.cookie('accessToken', data.session.access_token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+
+    if (data.session.refresh_token) {
+      res.cookie('refreshToken', data.session.refresh_token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+    }
+
     res.json({
       success: true,
-      session: data.session,
-      accessToken: data.session.access_token,
+      message: 'Token refreshed successfully',
     });
   } catch (err) {
     next(err);

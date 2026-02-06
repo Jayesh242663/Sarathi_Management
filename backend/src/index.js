@@ -99,7 +99,16 @@ app.use(helmet({
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true
-  }
+  },
+  frameguard: {
+    action: 'deny'  // Prevent clickjacking attacks
+  },
+  noSniff: true,  // Prevent MIME type sniffing
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin'  // Control referrer information
+  },
+  xssFilter: true,  // Enable XSS filter
+  hidePoweredBy: true  // Hide X-Powered-By header
 }));
 
 // Redirect HTTP to HTTPS in production
@@ -174,23 +183,34 @@ const authLimiter = rateLimit({
   }
 });
 
-// Lenient rate limit for session/token refresh (20 per minute)
+// Lenient rate limit for session/token refresh (30 per minute)
 const sessionLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,    // 1 minute
-  max: 20,                     // Allow 20 requests per minute for session checks
+  max: 30,                     // Allow 30 requests per minute for session checks
   skipSuccessfulRequests: false,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many session checks. Please wait a moment.'
 });
 
-// Global rate limiter for all API endpoints
+// Global rate limiter for all API endpoints (reduced for security)
 const globalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,    // 1 minute
-  max: 100,                   // 100 requests per minute
+  max: 60,                    // Reduced to 60 requests per minute
   skipSuccessfulRequests: false,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  message: 'Too many requests. Please slow down.'
+});
+
+// Financial operations rate limiter - stricter for payment/placement operations
+const financialLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,    // 1 minute
+  max: 30,                    // 30 financial operations per minute max
+  skipSuccessfulRequests: false,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many financial operations. Please wait a moment.'
 });
 
 // API v1 routes - stable, versioned
@@ -202,10 +222,10 @@ app.use('/api/v1/auth', authLimiter, authRouter);  // No CSRF on auth endpoints
 app.use('/api/v1/courses', csrfProtection, coursesRouter);
 app.use('/api/v1/batches', csrfProtection, batchesRouter);
 app.use('/api/v1/students', csrfProtection, studentsRouter);
-app.use('/api/v1/payments', csrfProtection, paymentsRouter);
-app.use('/api/v1/expenses', csrfProtection, expensesRouter);
+app.use('/api/v1/payments', financialLimiter, csrfProtection, paymentsRouter);
+app.use('/api/v1/expenses', financialLimiter, csrfProtection, expensesRouter);
 app.use('/api/v1/placements', csrfProtection, placementsRouter);
-app.use('/api/v1/placement-installments', csrfProtection, placementInstallmentsRouter);
+app.use('/api/v1/placement-installments', financialLimiter, csrfProtection, placementInstallmentsRouter);
 app.use('/api/v1/data', csrfProtection, dataRouter);
 
 // Backward compatibility - legacy routes (deprecated)
@@ -216,10 +236,10 @@ app.use('/api/auth', authLimiter, authRouter);  // No CSRF on auth endpoints
 app.use('/api/courses', csrfProtection, coursesRouter);
 app.use('/api/batches', csrfProtection, batchesRouter);
 app.use('/api/students', csrfProtection, studentsRouter);
-app.use('/api/payments', csrfProtection, paymentsRouter);
-app.use('/api/expenses', csrfProtection, expensesRouter);
+app.use('/api/payments', financialLimiter, csrfProtection, paymentsRouter);
+app.use('/api/expenses', financialLimiter, csrfProtection, expensesRouter);
 app.use('/api/placements', csrfProtection, placementsRouter);
-app.use('/api/placement-installments', csrfProtection, placementInstallmentsRouter);
+app.use('/api/placement-installments', financialLimiter, csrfProtection, placementInstallmentsRouter);
 app.use('/api/data', csrfProtection, dataRouter);
 
 app.use(csrfErrorHandler);

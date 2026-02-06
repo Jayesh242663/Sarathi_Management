@@ -4,6 +4,8 @@ import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
 import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
+import { logger } from '../utils/logger.js';
+import { sanitizeDbError } from '../utils/sanitizeError.js';
 
 const router = Router();
 
@@ -142,7 +144,7 @@ router.post('/', async (req, res, next) => {
       .eq('status', 'completed');
 
     if (checkError) {
-      console.error('[payments] Error checking for duplicates:', checkError);
+      logger.error('[payments] Error checking for duplicates', checkError);
       // Don't fail the entire request due to duplicate check error
     } else if (existingPayments && existingPayments.length > 0) {
       // Duplicate found
@@ -222,12 +224,15 @@ router.post('/', async (req, res, next) => {
       if (auditError) throw auditError;
     } catch (auditError) {
       // Non-fatal; log and continue
-      console.error('[payments] Failed to write audit log:', auditError);
+      logger.error('[payments] Failed to write audit log', auditError);
+      // CRITICAL: Roll back payment if audit fails
+      await sb.from('payments').delete().eq('id', created.id);
+      throw new Error('Failed to create audit trail - payment creation aborted');
     }
 
     res.status(201).json({ data });
   } catch (err) {
-    console.error('[payments] POST error:', err);
+    logger.error('[payments] POST error', err);
     next(err);
   }
 });
@@ -296,12 +301,14 @@ router.put('/:id', async (req, res, next) => {
 
       if (auditError) throw auditError;
     } catch (auditError) {
-      console.error('[payments] Failed to write audit log (UPDATE):', auditError);
+      logger.error('[payments] Failed to write audit log (UPDATE)', auditError);
+      // CRITICAL: Updates must be audited
+      throw new Error('Failed to create audit trail - update aborted');
     }
 
     res.json({ data });
   } catch (err) {
-    console.error('[payments] PUT error:', err);
+    logger.error('[payments] PUT error', err);
     next(err);
   }
 });

@@ -7,12 +7,24 @@ import { doubleCsrf } from 'csrf-csrf';
 const isProduction = process.env.NODE_ENV === 'production';
 const csrfCookieName = isProduction ? '__Host-psifi.x-csrf-token' : 'psifi.x-csrf-token';
 
+// CRITICAL: Validate CSRF_SECRET is set in production
+if (isProduction && !process.env.CSRF_SECRET) {
+  console.error('[SECURITY] FATAL: CSRF_SECRET environment variable is not set in production');
+  console.error('[SECURITY] CSRF protection is DISABLED. This is a critical security issue.');
+  console.error('[SECURITY] Set CSRF_SECRET environment variable and restart the application.');
+  throw new Error(
+    'CSRF_SECRET environment variable is required in production. '
+    + 'Set CSRF_SECRET to a random 32-byte base64-encoded string: '
+    + 'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"'
+  );
+}
+
 // Configure CSRF protection
 const {
   generateCsrfToken: generateCsrfTokenInternal,
   doubleCsrfProtection,
 } = doubleCsrf({
-  getSecret: () => process.env.CSRF_SECRET || 'default-csrf-secret-change-in-production',
+  getSecret: () => process.env.CSRF_SECRET || 'dev-csrf-secret-only-for-development-change-me',
   getSessionIdentifier: (req) => req.user?.id || req.ip || 'anonymous',
   cookieName: csrfCookieName,
   cookieOptions: {

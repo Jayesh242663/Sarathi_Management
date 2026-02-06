@@ -68,7 +68,7 @@ router.post('/', async (req, res, next) => {
     const sb = requireSupabase();
     const installmentData = req.body;
     
-    console.log('[placement-installments] Creating installment:', installmentData);
+    logger.audit('CREATE_PLACEMENT_INSTALLMENT', installmentData.placement_id, req.user?.id);
     
     // Check for duplicate placement installment
     // Prevent recording the same installment twice (same placement, amount, date)
@@ -80,7 +80,7 @@ router.post('/', async (req, res, next) => {
       .eq('payment_date', installmentData.payment_date);
 
     if (checkError) {
-      console.error('[placement-installments] Error checking for duplicates:', checkError);
+      logger.error('[placement-installments] Error checking for duplicates', checkError);
       // Don't fail entirely due to duplicate check error
     } else if (existingInstallments && existingInstallments.length > 0) {
       // Duplicate found
@@ -140,7 +140,7 @@ router.post('/', async (req, res, next) => {
           });
 
           if (batchId) {
-            console.log('[placement-installments] Resolved batch_id:', batchId);
+            logger.debug('[placement-installments] Resolved batch_id');
           } else {
             console.warn('[placement-installments] WARNING: Could not find batch_id for installment:', created.id);
           }
@@ -171,18 +171,23 @@ router.post('/', async (req, res, next) => {
         const { data: auditData, error: auditError } = await sb.from('audit_logs').insert([auditPayload]).select();
 
         if (auditError) {
-          console.error('[placement-installments] Audit log insert error:', auditError);
-          throw auditError;
+          logger.error('[placement-installments] Audit log insert error', auditError);
+          // CRITICAL: Roll back installment if audit fails
+          await sb.from('placement_installments').delete().eq('id', created.id);
+          throw new Error('Failed to create audit trail - installment creation aborted');
         }
         
-        console.log('[placement-installments] Audit log created successfully:', auditData);
+        logger.debug('[placement-installments] Audit log created successfully');
       }
     } catch (auditError) {
-      console.error('[placement-installments] Failed to write audit log:', auditError);
+      logger.error('[placement-installments] Failed to write audit log', auditError);
+      // CRITICAL: Roll back if audit logging fails
+      await sb.from('placement_installments').delete().eq('id', created.id);
+      throw new Error('Failed to create audit trail - installment creation aborted');
     }
     res.status(201).json({ data: data[0] });
   } catch (err) {
-    console.error('[placement-installments] POST error:', err);
+    logger.error('[placement-installments] POST error', err);
     next(err);
   }
 });
@@ -194,7 +199,7 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
     
-    console.log('[placement-installments] Updating installment:', id, updateData);
+    logger.audit('UPDATE_PLACEMENT_INSTALLMENT', id, req.user?.id);
     
     // Fetch current installment for batch_id and student_id
     const { data: currentInstallment, error: fetchError } = await sb
@@ -212,11 +217,12 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
       .select();
     
     if (error) {
-      console.error('[placement-installments] Update error:', error);
-      throw error;
+      logger.error('[placement-installments] Update failed', error);
+      const sanitized = sanitizeDbError(error);
+      throw new Error(sanitized);
     }
     
-    console.log('[placement-installments] Installment updated:', data);
+    logger.audit('INSTALLMENT_UPDATED', id, req.user?.id);
 
     // Write audit log for installment update (best-effort)
     try {
@@ -257,12 +263,13 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
         if (auditError) throw auditError;
       }
     } catch (auditError) {
-      console.error('[placement-installments] Failed to write audit log (UPDATE):', auditError);
+      logger.error('[placement-installments] Failed to write audit log (UPDATE)', auditError);
+      throw new Error('Failed to create audit trail - update aborted');
     }
 
     res.json({ data: data[0] });
   } catch (err) {
-    console.error('[placement-installments] PUT error:', err);
+    logger.error('[placement-installments] PUT error', err);
     next(err);
   }
 });
@@ -273,7 +280,7 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
     const sb = requireSupabase();
     const { id } = req.params;
     
-    console.log('[placement-installments] Deleting installment:', id);
+    logger.audit('DELETE_PLACEMENT_INSTALLMENT', id, req.user?.id);
 
     // Fetch installment details before deletion for audit log
     const { data: installmentToDelete, error: fetchError } = await sb
@@ -290,8 +297,9 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
       .eq('id', id);
     
     if (error) {
-      console.error('[placement-installments] Delete error:', error);
-      throw error;
+      logger.error('[placement-installments] Insert failed', error);
+      const sanitized = sanitizeDbError(error);
+      throw new Error(sanitized);
     }
     
     console.log('[placement-installments] Installment deleted');
@@ -331,12 +339,12 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
         if (auditError) throw auditError;
       }
     } catch (auditError) {
-      console.error('[placement-installments] Failed to write audit log (DELETE):', auditError);
+      logger.error('[placement-installments] Failed to write audit log (DELETE)', auditError);
     }
 
     res.json({ message: 'Installment deleted successfully' });
   } catch (err) {
-    console.error('[placement-installments] DELETE error:', err);
+    logger.error('[placement-installments] DELETE error', err);
     next(err);
   }
 });

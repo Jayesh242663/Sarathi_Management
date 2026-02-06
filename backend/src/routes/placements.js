@@ -3,6 +3,8 @@ import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
 import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
+import { logger } from '../utils/logger.js';
+import { sanitizeDbError } from '../utils/sanitizeError.js';
 
 const router = Router();
 
@@ -68,7 +70,7 @@ router.post('/', async (req, res, next) => {
     const sb = requireSupabase();
     const placementData = req.body;
     
-    console.log('[placements] Creating placement:', placementData);
+    logger.audit('CREATE_PLACEMENT', placementData.student_id, req.user?.id);
     
     // Use upsert to avoid failing on the unique (student_id, batch_id, company_name) constraint
     const { data, error } = await sb
@@ -78,14 +80,15 @@ router.post('/', async (req, res, next) => {
       .single();
     
     if (error) {
-      console.error('[placements] Insert error:', error);
-      throw error;
+      logger.error('[placements] Insert failed', error);
+      const sanitized = sanitizeDbError(error);
+      throw new Error(sanitized);
     }
     
     console.log('[placements] Placement created:', data);
     res.status(201).json({ data });
   } catch (err) {
-    console.error('[placements] POST error:', err);
+    logger.error('[placements] POST error', err);
     next(err);
   }
 });
@@ -97,7 +100,7 @@ router.put('/:id', async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
     
-    console.log('[placements] Updating placement:', id, updateData);
+    logger.audit('UPDATE_PLACEMENT', id, req.user?.id);
     
     const { data, error } = await sb
       .from('placements')
@@ -106,11 +109,12 @@ router.put('/:id', async (req, res, next) => {
       .select();
     
     if (error) {
-      console.error('[placements] Update error:', error);
-      throw error;
+      logger.error('[placements] Update failed', error);
+      const sanitized = sanitizeDbError(error);
+      throw new Error(sanitized);
     }
     
-    console.log('[placements] Placement updated:', data);
+    logger.audit('PLACEMENT_UPDATED', id, req.user?.id);
 
     // Record audit log for placement update (best-effort)
     try {
@@ -136,11 +140,11 @@ router.put('/:id', async (req, res, next) => {
         if (auditError) throw auditError;
       }
     } catch (auditError) {
-      console.error('[placements] Failed to write audit log:', auditError);
+      logger.error('[placements] Failed to write audit log', auditError);
     }
     res.json({ data: data[0] });
   } catch (err) {
-    console.error('[placements] PUT error:', err);
+    logger.error('[placements] PUT error', err);
     next(err);
   }
 });
@@ -151,7 +155,7 @@ router.delete('/:id', async (req, res, next) => {
     const sb = requireSupabase();
     const { id } = req.params;
     
-    console.log('[placements] Deleting placement:', id);
+    logger.audit('DELETE_PLACEMENT', id, req.user?.id);
     
     const { error } = await sb
       .from('placements')
@@ -159,14 +163,14 @@ router.delete('/:id', async (req, res, next) => {
       .eq('id', id);
     
     if (error) {
-      console.error('[placements] Delete error:', error);
+      logger.error('[placements] Delete failed', error);
       throw error;
     }
     
-    console.log('[placements] Placement deleted');
+    logger.audit('PLACEMENT_DELETED', id, req.user?.id);
     res.json({ message: 'Placement deleted successfully' });
   } catch (err) {
-    console.error('[placements] DELETE error:', err);
+    logger.error('[placements] DELETE error', err);
     next(err);
   }
 });

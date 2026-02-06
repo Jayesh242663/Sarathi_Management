@@ -1,12 +1,18 @@
 import { supabase } from '../config/supabase.js';
 
 /**
- * Basic auth middleware - extracts Bearer token from headers
+ * Basic auth middleware - extracts bearer token from headers OR httpOnly cookies
+ * Priority: Authorization header > httpOnly cookie
  */
 export default function auth(req, res, next) {
+  // Try Authorization header first
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) {
     req.token = authHeader.slice('Bearer '.length);
+  } 
+  // Fall back to httpOnly cookie
+  else if (req.cookies && req.cookies.accessToken) {
+    req.token = req.cookies.accessToken;
   }
   next();
 }

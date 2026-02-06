@@ -4,6 +4,8 @@ import { requireSupabase, serviceKeyRole } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
 import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
+import { logger } from '../utils/logger.js';
+import { sanitizeDbError } from '../utils/sanitizeError.js';
 
 const router = Router();
 
@@ -49,7 +51,7 @@ router.use(restrictWriteToAdmin);
 router.get('/', async (req, res, next) => {
   try {
     const sb = requireSupabase();
-    console.log('[students] serviceKeyRole:', serviceKeyRole);
+    logger.debug('[students] Fetching students list');
     const { batchId } = req.query;
     
     // Validate query parameters
@@ -114,8 +116,7 @@ router.post('/', async (req, res, next) => {
     const sb = requireSupabase();
     const studentData = validation.data;
     
-    console.log('[students] Creating student:', studentData);
-    console.log('[students] serviceKeyRole before insert:', serviceKeyRole);
+    logger.audit('CREATE_STUDENT', studentData.enrollment_number, req.user?.id);
     
     // Accept either batch_id or batch (name) and course_id or course (code/name)
     const payload = { ...studentData };
@@ -266,12 +267,12 @@ router.post('/', async (req, res, next) => {
         if (auditError) throw auditError;
       }
     } catch (auditError) {
-      console.error('[students] Failed to write audit log (CREATE):', auditError);
+      logger.error('[students] Failed to write audit log (CREATE)', auditError);
     }
 
     res.status(201).json({ data: createdStudent });
   } catch (err) {
-    console.error('[students] POST error:', err);
+    logger.error('[students] POST error', err);
     next(err);
   }
 });
@@ -283,7 +284,7 @@ router.put('/:id', async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
     
-    console.log('[students] Updating student:', id, updateData);
+    logger.audit('UPDATE_STUDENT', id, req.user?.id);
     
     // Map frontend keys to database column names for update
     const dbUpdatePayload = {};
@@ -317,11 +318,12 @@ router.put('/:id', async (req, res, next) => {
       .select();
     
     if (error) {
-      console.error('[students] Update error:', error);
-      throw error;
+      logger.error('[students] Update failed', error);
+      const sanitized = sanitizeDbError(error);
+      throw new Error(sanitized);
     }
     
-    console.log('[students] Student updated:', data);
+    logger.audit('STUDENT_UPDATED', id, req.user?.id);
 
     // Write audit log for student update (best-effort)
     try {
@@ -343,11 +345,11 @@ router.put('/:id', async (req, res, next) => {
         if (auditError) throw auditError;
       }
     } catch (auditError) {
-      console.error('[students] Failed to write audit log (UPDATE):', auditError);
+      logger.error('[students] Failed to write audit log (UPDATE)', auditError);
     }
     res.json({ data: data[0] });
   } catch (err) {
-    console.error('[students] PUT error:', err);
+    logger.error('[students] PUT error', err);
     next(err);
   }
 });
@@ -358,7 +360,7 @@ router.delete('/:id', async (req, res, next) => {
     const sb = requireSupabase();
     const { id } = req.params;
     
-    console.log('[students] Deleting student:', id);
+    logger.audit('DELETE_STUDENT', id, req.user?.id);
     // First remove dependent placement records to satisfy FK RESTRICT
     try {
       const { error: placementsError } = await sb
@@ -366,7 +368,7 @@ router.delete('/:id', async (req, res, next) => {
         .delete()
         .eq('student_id', id);
       if (placementsError) {
-        console.error('[students] Failed to delete placements for student:', id, placementsError);
+        logger.error('[students] Failed to delete placements for student', placementsError);
         // Surface a clearer error rather than raw 500
         const err = new Error('Cannot delete student because placements exist or deletion is not permitted');
         err.status = 409;
@@ -383,14 +385,15 @@ router.delete('/:id', async (req, res, next) => {
       .eq('id', id);
     
     if (error) {
-      console.error('[students] Delete error:', error);
+      logger.error('[students] Delete failed', error);
+      const sanitized = sanitizeDbError(error);
       // Map FK/RLS errors to a friendlier status code
       const err = new Error(error.message || 'Failed to delete student');
       err.status = /foreign key/i.test(error.message || '') ? 409 : 500;
       throw err;
     }
     
-    console.log('[students] Student deleted:', id);
+    logger.audit('STUDENT_DELETED', id, req.user?.id);
 
     // Write audit log for student delete (best-effort)
     try {

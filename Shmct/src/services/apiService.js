@@ -39,12 +39,12 @@ export function setLogoutHandler(handler) {
   logoutHandler = handler;
 }
 
-// Initialize headers with authentication
+// Initialize headers - no longer need to add token (httpOnly cookies handle it)
 function getHeaders() {
-  const token = getFromStorage(STORAGE_KEYS.AUTH_TOKEN);
   return {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
+    // httpOnly cookies are automatically sent by browser with credentials: 'include'
+    // No Authorization header needed
   };
 }
 
@@ -55,7 +55,7 @@ async function loadCsrfToken() {
   csrfTokenPromise = nativeFetch(`${API_BASE}/csrf-token`, {
     method: 'GET',
     headers: getHeaders(),
-    credentials: 'include'
+    credentials: 'include'  // Browser auto-sends httpOnly cookies
   })
     .then(async (response) => {
       if (!response.ok) return null;
@@ -77,15 +77,18 @@ async function apiFetch(url, options = {}, retry = false) {
   const finalOptions = {
     ...options,
     headers,
-    credentials: 'include'
+    credentials: 'include'  // Browser automatically sends httpOnly cookies
   };
 
+  // Add CSRF token for write operations
   if (WRITE_METHODS.has(method)) {
     const csrfToken = await loadCsrfToken();
     if (csrfToken) headers[CSRF_HEADER] = csrfToken;
   }
 
   const response = await nativeFetch(url, finalOptions);
+  
+  // CSRF token retry on 403
   if (!retry && WRITE_METHODS.has(method) && response.status === 403) {
     csrfTokenCache = null;
     await loadCsrfToken();
@@ -97,98 +100,28 @@ async function apiFetch(url, options = {}, retry = false) {
 
 const fetch = apiFetch;
 
-// Handle 401 errors and attempt token refresh
-async function handleUnauthorized(originalRequest) {
-  if (authInvalid) {
-    if (logoutHandler) {
-      logoutHandler();
-    }
-    throw new Error('Session expired. Please login again.');
+// Handle 401 Unauthorized - httpOnly cookie expired
+// Simply logout since we can't refresh directly
+async function handleUnauthorized() {
+  authInvalid = true;
+  isRefreshing = false;
+  if (logoutHandler) {
+    logoutHandler();
   }
-
-  const refreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
-  
-  if (!refreshToken) {
-    authInvalid = true;
-    // No refresh token, logout
-    if (logoutHandler) {
-      logoutHandler();
-    }
-    throw new Error('Session expired. Please login again.');
-  }
-
-  if (!isRefreshing) {
-    isRefreshing = true;
-    
-    try {
-      const response = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-
-      const data = await response.json();
-      const newToken = data.accessToken;
-      const newRefreshToken = data.session?.refresh_token;
-
-      // Update stored tokens
-      setToStorage(STORAGE_KEYS.AUTH_TOKEN, newToken);
-      if (newRefreshToken) {
-        setToStorage(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-      }
-
-      authInvalid = false;
-      isRefreshing = false;
-      onTokenRefreshed(newToken);
-
-      // Retry original request with new token
-      return originalRequest(newToken);
-    } catch (error) {
-      authInvalid = true;
-      isRefreshing = false;
-      // Refresh failed, logout
-      if (logoutHandler) {
-        logoutHandler();
-      }
-      throw new Error('Session expired. Please login again.');
-    }
-  } else {
-    // Wait for token refresh to complete
-    return new Promise((resolve, reject) => {
-      subscribeTokenRefresh((token) => {
-        resolve(originalRequest(token));
-      });
-    });
-  }
+  throw new Error('Session expired. Please login again.');
 }
 
-// Enhanced fetch wrapper with retry logic
+// Enhanced fetch wrapper with simplified retry logic
 async function fetchWithRetry(url, options = {}) {
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'include',  // CRITICAL: Always send httpOnly cookies
+    });
     
-    // Handle 401 Unauthorized
+    // Handle 401 Unauthorized - httpOnly cookie expired
     if (response.status === 401) {
-      // Retry with refreshed token
-      return await handleUnauthorized(async (newToken) => {
-        const newOptions = {
-          ...options,
-          headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${newToken}`
-          }
-        };
-        const retryResponse = await fetch(url, newOptions);
-        if (!retryResponse.ok && retryResponse.status !== 401) {
-          throw new Error(`Request failed: ${retryResponse.statusText}`);
-        }
-        return retryResponse;
-      });
+      await handleUnauthorized();
     }
     
     return response;
@@ -555,6 +488,7 @@ const HttpClient = {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'GET',
       headers: getHeaders(),
+      credentials: 'include',  // CRITICAL: Send httpOnly cookies
       ...options,
     });
     if (!response.ok) {
@@ -570,6 +504,7 @@ const HttpClient = {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       headers: getHeaders(),
+      credentials: 'include',  // CRITICAL: Send httpOnly cookies
       body: JSON.stringify(data),
       ...options,
     });
@@ -595,6 +530,7 @@ const HttpClient = {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'PUT',
       headers: getHeaders(),
+      credentials: 'include',  // CRITICAL: Send httpOnly cookies
       body: JSON.stringify(data),
       ...options,
     });
@@ -611,6 +547,7 @@ const HttpClient = {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders(),
+      credentials: 'include',  // CRITICAL: Send httpOnly cookies
       ...options,
     });
     if (!response.ok) {

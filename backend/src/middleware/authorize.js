@@ -1,4 +1,5 @@
 import supabase, { requireSupabase } from '../config/supabase.js';
+import { logger } from '../utils/logger.js';
 
 const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
   .split(',')
@@ -6,7 +7,7 @@ const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
   .filter(Boolean);
 
 if (SUPER_ADMIN_EMAILS.length === 0) {
-  console.warn('[AUTH] SUPER_ADMIN_EMAILS environment variable is not configured. Super admin features disabled.');
+  logger.warn('[AUTH] SUPER_ADMIN_EMAILS environment variable is not configured. Super admin features disabled.');
 }
 
 const isSuperAdminEmail = (email = '') => SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
@@ -42,7 +43,7 @@ export const attachUserRole = async (req, res, next) => {
           }, { onConflict: 'id' });
       } catch (upsertError) {
         // Non-blocking: log the error but continue with the request
-        console.error('[authorize] Warning: Could not upsert super admin profile:', upsertError);
+        logger.error('[authorize] Warning: Could not upsert super admin profile', upsertError);
       }
 
       return next();
@@ -67,7 +68,7 @@ export const attachUserRole = async (req, res, next) => {
           }, { onConflict: 'id' });
       } catch (upsertError) {
         // Non-blocking: log the error but continue with the request
-        console.error('[authorize] Warning: Could not upsert app metadata role profile:', upsertError);
+        logger.error('[authorize] Warning: Could not upsert app metadata role profile', upsertError);
       }
 
       return next();
@@ -92,7 +93,7 @@ export const attachUserRole = async (req, res, next) => {
       if (!profile) {
         // Auto-create profile for users that don't have one
         // This handles cases where the database trigger didn't run
-        console.log('[authorize] No profile found for user, creating default profile:', req.user.id);
+        logger.debug('[authorize] No profile found for user, creating default profile');
         
         try {
           const { data: newProfile, error: insertError } = await sb
@@ -113,7 +114,7 @@ export const attachUserRole = async (req, res, next) => {
             console.log('[authorize] Profile creation failed, forcing logout for user:', req.user.id);
             return res.status(401).json({ error: 'Session invalid. Please log in again.' });
           } else {
-            console.log('[authorize] Profile created successfully for:', req.user.id);
+            logger.debug('[authorize] Profile created successfully');
             req.user.role = newProfile.role;
             req.user.fullName = newProfile.full_name;
           }
