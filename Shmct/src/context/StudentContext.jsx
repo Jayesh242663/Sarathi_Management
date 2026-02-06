@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { StudentService, PaymentService, PlacementInstallmentService, PlacementService } from '../services/apiService';
-import { getFromStorage, setToStorage, getCurrentAcademicBatch, STORAGE_KEYS } from '../utils/storage';
+import { getFromStorage, setToStorage, removeFromStorage, getCurrentAcademicBatch, STORAGE_KEYS } from '../utils/storage';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -217,7 +217,9 @@ export const StudentProvider = ({ children }) => {
         
         // If 401 Unauthorized, the user needs to log in again
         if (response.status === 401) {
-          throw new Error('Authentication required. Please log in again.');
+          const authError = new Error('Authentication required. Please log in again.');
+          authError.isAuthError = true;
+          throw authError;
         }
         
         throw new Error(`Failed to fetch data from Supabase: ${response.status} ${errorText}`);
@@ -345,6 +347,21 @@ export const StudentProvider = ({ children }) => {
       console.error('[StudentContext] Error loading data from Supabase:', err);
       console.error('[StudentContext] Stack:', err.stack);
       setDataLoadError(err.message);
+
+      if (err?.isAuthError || /authentication required|session expired/i.test(err?.message || '')) {
+        removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+        removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+        removeFromStorage(STORAGE_KEYS.USER);
+        setStudents([]);
+        setPayments([]);
+        setPlacements([]);
+        setBatches([]);
+        setCourses([]);
+        setAuditLog([]);
+        setLoadRetryCount(0);
+        setLoading(false);
+        return;
+      }
 
       // Retry with exponential backoff (max 3 attempts)
       if (retryCount < 2) {

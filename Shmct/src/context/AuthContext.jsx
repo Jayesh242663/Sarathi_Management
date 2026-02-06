@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '../utils/storage';
 import { DEFAULT_ADMIN } from '../utils/constants';
-import apiService, { setLogoutHandler } from '../services/apiService';
+import apiService, { setLogoutHandler, resetAuthInvalid } from '../services/apiService';
 
 const AuthContext = createContext(null);
 
@@ -87,6 +87,7 @@ export const AuthProvider = ({ children }) => {
                 if (newRefreshToken) {
                   setToStorage(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
                 }
+                resetAuthInvalid();
                 console.log('[AuthContext] Token refreshed successfully');
               }
             } catch (error) {
@@ -180,6 +181,7 @@ export const AuthProvider = ({ children }) => {
           setToStorage(STORAGE_KEYS.REFRESH_TOKEN, response.session.refresh_token);
         }
         
+        resetAuthInvalid();
         console.log('[AuthContext] Login successful');
         return { success: true };
       }

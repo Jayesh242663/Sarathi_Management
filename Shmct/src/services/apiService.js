@@ -16,6 +16,11 @@ let csrfTokenPromise = null;
 // Token refresh state
 let isRefreshing = false;
 let refreshSubscribers = [];
+let authInvalid = false;
+
+export function resetAuthInvalid() {
+  authInvalid = false;
+}
 
 // Subscribe to token refresh
 function subscribeTokenRefresh(callback) {
@@ -94,9 +99,17 @@ const fetch = apiFetch;
 
 // Handle 401 errors and attempt token refresh
 async function handleUnauthorized(originalRequest) {
+  if (authInvalid) {
+    if (logoutHandler) {
+      logoutHandler();
+    }
+    throw new Error('Session expired. Please login again.');
+  }
+
   const refreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
   
   if (!refreshToken) {
+    authInvalid = true;
     // No refresh token, logout
     if (logoutHandler) {
       logoutHandler();
@@ -129,12 +142,14 @@ async function handleUnauthorized(originalRequest) {
         setToStorage(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
       }
 
+      authInvalid = false;
       isRefreshing = false;
       onTokenRefreshed(newToken);
 
       // Retry original request with new token
       return originalRequest(newToken);
     } catch (error) {
+      authInvalid = true;
       isRefreshing = false;
       // Refresh failed, logout
       if (logoutHandler) {
@@ -560,6 +575,7 @@ const HttpClient = {
     });
     if (!response.ok) {
       if (endpoint === '/auth/refresh') {
+        authInvalid = true;
         removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
         removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
         removeFromStorage(STORAGE_KEYS.USER);

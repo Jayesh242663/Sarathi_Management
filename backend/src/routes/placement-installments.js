@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js';
+import { attachUserRole, requireAdmin, requireAuditorOrAdmin } from '../middleware/authorize.js';
 
 const router = Router();
 
 // Apply authentication and role checking
 router.use(authenticateToken);
 router.use(attachUserRole);
-router.use(restrictWriteToAdmin);
+router.use(requireAuditorOrAdmin);
 
 // GET installments by placement
 router.get('/', async (req, res, next) => {
@@ -182,7 +182,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // PUT update installment
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireAdmin, async (req, res, next) => {
   try {
     const sb = requireSupabase();
     const { id } = req.params;
@@ -266,7 +266,7 @@ router.put('/:id', async (req, res, next) => {
 });
 
 // DELETE installment
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireAdmin, async (req, res, next) => {
   try {
     const sb = requireSupabase();
     const { id } = req.params;
