@@ -15,7 +15,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import './AuditPage.css';
 
 const AuditPage = () => {
-  const { getAuditLog, auditLog, currentBatch } = useStudents();
+  const { getAuditLog, auditLog } = useStudents();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
@@ -46,14 +46,9 @@ const AuditPage = () => {
   }, [location.state, auditLog]);
 
   const filteredAuditLog = useMemo(() => {
-    console.log('[AuditPage] Filtering audit log. currentBatch:', currentBatch, 'auditLog length:', auditLog.length);
+    console.log('[AuditPage] Filtering audit log. auditLog length:', auditLog.length);
     
     let filters = {};
-    
-    // Add batch filter only if currentBatch is valid (not null/undefined)
-    if (currentBatch && currentBatch !== 'all') {
-      filters.batch = currentBatch;
-    }
     
     if (actionFilter !== 'all') {
       filters.action = actionFilter;
@@ -89,7 +84,7 @@ const AuditPage = () => {
     ));
     console.log('[AuditPage] Showing financial entries only:', financialLogs.length);
     return financialLogs;
-  }, [getAuditLog, searchTerm, actionFilter, dateRange, currentBatch, showAllEntries, auditLog.length]);
+  }, [getAuditLog, searchTerm, actionFilter, dateRange, showAllEntries, auditLog.length]);
 
   // Calculate running balance and totals
   const ledgerData = useMemo(() => {
@@ -335,26 +330,7 @@ const AuditPage = () => {
       <div className="placements-header">
         <div className="placements-header-text">
           <h1>General Ledger</h1>
-          <p>
-            {currentBatch === 'all'
-              ? 'Showing ledger for all batches'
-              : `Batch ${currentBatch} Ledger`}
-          </p>
-          {currentBatch && currentBatch !== 'all' && (
-            <div style={{ 
-              marginTop: '0.5rem', 
-              padding: '0.25rem 0.75rem', 
-              background: 'rgba(59, 130, 246, 0.1)', 
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: '6px',
-              display: 'inline-block',
-              fontSize: '0.875rem',
-              color: '#60a5fa'
-            }}>
-              <BookOpen size={14} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-              Filtered by batch: {currentBatch}
-            </div>
-          )}
+          <p>Complete financial record across all batches</p>
         </div>
       </div>
 
@@ -474,20 +450,6 @@ const AuditPage = () => {
             Reset
           </button>
         </div>
-        
-        {currentBatch && currentBatch !== 'all' && (
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '0.75rem 1rem', 
-            background: 'rgba(59, 130, 246, 0.05)', 
-            border: '1px solid rgba(59, 130, 246, 0.2)',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            color: 'rgba(255, 255, 255, 0.7)'
-          }}>
-            💡 <strong>Tip:</strong> Currently showing entries for batch <strong>{currentBatch}</strong>. To view all batches, change the batch selection in the sidebar.
-          </div>
-        )}
       </div>
 
       {/* Ledger Table - Classic accounting format */}

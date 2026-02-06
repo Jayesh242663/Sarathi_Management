@@ -12,6 +12,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearAuthState = () => {
+    setUser(null);
+    removeFromStorage(STORAGE_KEYS.USER);
+    removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
+    removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+  };
+
   // Logout function - defined first so it can be used in useEffect
   const logout = async () => {
     try {
@@ -24,11 +31,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      setUser(null);
-      removeFromStorage(STORAGE_KEYS.USER);
-      removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-      removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+      clearAuthState();
     }
+  };
+
+  const forceLogout = () => {
+    clearAuthState();
+    setLoading(false);
   };
 
   // Helper function to decode JWT and get expiration time
@@ -93,18 +102,13 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
               console.error('[AuthContext] Token refresh failed:', error.message);
               // If refresh fails, logout
-              removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-              removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
-              removeFromStorage(STORAGE_KEYS.USER);
-              setLoading(false);
+              forceLogout();
               return;
             }
           } else {
             // No refresh token available, logout
             console.log('[AuthContext] No refresh token available, logging out');
-            removeFromStorage(STORAGE_KEYS.AUTH_TOKEN);
-            removeFromStorage(STORAGE_KEYS.USER);
-            setLoading(false);
+            forceLogout();
             return;
           }
         }

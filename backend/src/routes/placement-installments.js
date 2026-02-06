@@ -5,6 +5,38 @@ import { attachUserRole, requireAdmin, requireAuditorOrAdmin } from '../middlewa
 
 const router = Router();
 
+async function resolveBatchId(sb, { placementId, studentId }) {
+  if (placementId) {
+    const { data: placementData, error: placementError } = await sb
+      .from('placements')
+      .select('batch_id, student_id')
+      .eq('id', placementId)
+      .single();
+
+    if (!placementError && placementData?.batch_id) {
+      return placementData.batch_id;
+    }
+
+    if (!studentId && placementData?.student_id) {
+      studentId = placementData.student_id;
+    }
+  }
+
+  if (studentId) {
+    const { data: studentData, error: studentError } = await sb
+      .from('students')
+      .select('batch_id')
+      .eq('id', studentId)
+      .single();
+
+    if (!studentError && studentData?.batch_id) {
+      return studentData.batch_id;
+    }
+  }
+
+  return null;
+}
+
 // Apply authentication and role checking
 router.use(authenticateToken);
 router.use(attachUserRole);
@@ -99,44 +131,18 @@ router.post('/', async (req, res, next) => {
       if (created) {
         console.log('[placement-installments] Starting audit log creation for installment:', created.id);
         
-        // Fetch student to get batch_id - CRITICAL: Always populate batch_id
+        // Fetch batch_id from placement or student
         let batchId = null;
         try {
-          const { data: studentData, error: studentError } = await sb
-            .from('user_profiles')
-            .select('batch_id')
-            .eq('id', created.student_id)
-            .single();
-          
-          if (!studentError && studentData && studentData.batch_id) {
-            batchId = studentData.batch_id;
-            console.log('[placement-installments] Found batch_id from user_profiles:', batchId);
+          batchId = await resolveBatchId(sb, {
+            placementId: created.placement_id,
+            studentId: created.student_id,
+          });
+
+          if (batchId) {
+            console.log('[placement-installments] Resolved batch_id:', batchId);
           } else {
-            console.warn('[placement-installments] No batch_id in user_profiles, trying placement record');
-            
-            // Fallback: Get batch_id from placement via its student's batch
-            const { data: placementData, error: placementError } = await sb
-              .from('placements')
-              .select('student_id')
-              .eq('id', created.placement_id)
-              .single();
-            
-            if (!placementError && placementData) {
-              const { data: student2, error: student2Error } = await sb
-                .from('user_profiles')
-                .select('batch_id')
-                .eq('id', placementData.student_id)
-                .single();
-              
-              if (!student2Error && student2 && student2.batch_id) {
-                batchId = student2.batch_id;
-                console.log('[placement-installments] Found batch_id from placement student:', batchId);
-              }
-            }
-          }
-          
-          if (!batchId) {
-            console.warn('[placement-installments] WARNING: Could not find batch_id for student:', created.student_id);
+            console.warn('[placement-installments] WARNING: Could not find batch_id for installment:', created.id);
           }
         } catch (e) {
           console.warn('[placement-installments] Exception fetching batch_id:', e);
@@ -216,19 +222,15 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
     try {
       const updated = data?.[0];
       if (updated) {
-        // Fetch student to get batch_id
+        // Fetch batch_id from placement or student
         let batchId = null;
         try {
-          const { data: studentData, error: studentError } = await sb
-            .from('user_profiles')
-            .select('batch_id')
-            .eq('id', updated.student_id)
-            .single();
-          if (!studentError && studentData) {
-            batchId = studentData.batch_id;
-          }
+          batchId = await resolveBatchId(sb, {
+            placementId: updated.placement_id,
+            studentId: updated.student_id,
+          });
         } catch (e) {
-          console.warn('[placement-installments] Could not fetch student batch:', e);
+          console.warn('[placement-installments] Could not fetch batch_id:', e);
         }
 
         const { error: auditError } = await sb.from('audit_logs').insert([
@@ -297,19 +299,15 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
     // Write audit log for installment deletion (best-effort)
     try {
       if (installmentToDelete) {
-        // Fetch student to get batch_id
+        // Fetch batch_id from placement or student
         let batchId = null;
         try {
-          const { data: studentData, error: studentError } = await sb
-            .from('user_profiles')
-            .select('batch_id')
-            .eq('id', installmentToDelete.student_id)
-            .single();
-          if (!studentError && studentData) {
-            batchId = studentData.batch_id;
-          }
+          batchId = await resolveBatchId(sb, {
+            placementId: installmentToDelete.placement_id,
+            studentId: installmentToDelete.student_id,
+          });
         } catch (e) {
-          console.warn('[placement-installments] Could not fetch student batch:', e);
+          console.warn('[placement-installments] Could not fetch batch_id:', e);
         }
 
         const { error: auditError } = await sb.from('audit_logs').insert([

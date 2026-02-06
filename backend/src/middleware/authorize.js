@@ -28,7 +28,7 @@ export const attachUserRole = async (req, res, next) => {
       req.user.role = 'administrator';
       req.user.fullName = req.user.user_metadata?.name || req.user.email;
 
-      // Ensure a profile row exists for consistency
+      // Ensure a profile row exists for consistency (non-blocking)
       try {
         const sb = requireSupabase();
         await sb
@@ -41,7 +41,8 @@ export const attachUserRole = async (req, res, next) => {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
       } catch (upsertError) {
-        console.error('Error ensuring super admin profile:', upsertError);
+        // Non-blocking: log the error but continue with the request
+        console.error('[authorize] Warning: Could not upsert super admin profile:', upsertError);
       }
 
       return next();
@@ -52,7 +53,7 @@ export const attachUserRole = async (req, res, next) => {
       req.user.role = appMetadataRole;
       req.user.fullName = req.user.user_metadata?.name || req.user.email;
 
-      // Ensure a profile row exists for consistency
+      // Ensure a profile row exists for consistency (non-blocking)
       try {
         const sb = requireSupabase();
         await sb
@@ -65,7 +66,8 @@ export const attachUserRole = async (req, res, next) => {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
       } catch (upsertError) {
-        console.error('Error ensuring app metadata role profile:', upsertError);
+        // Non-blocking: log the error but continue with the request
+        console.error('[authorize] Warning: Could not upsert app metadata role profile:', upsertError);
       }
 
       return next();
@@ -82,7 +84,9 @@ export const attachUserRole = async (req, res, next) => {
 
       if (error) {
         console.error('Error fetching user profile:', error);
-        return res.status(500).json({ error: 'Failed to fetch user profile' });
+        // Force logout on critical profile fetch error
+        console.log('[authorize] Profile fetch failed, forcing logout for user:', req.user.id);
+        return res.status(401).json({ error: 'Session invalid. Please log in again.' });
       }
 
       if (!profile) {
@@ -105,15 +109,19 @@ export const attachUserRole = async (req, res, next) => {
 
           if (insertError) {
             console.error('[authorize] Error creating user profile:', insertError);
-            return res.status(500).json({ error: 'Failed to create user profile' });
+            // Force logout on profile creation failure
+            console.log('[authorize] Profile creation failed, forcing logout for user:', req.user.id);
+            return res.status(401).json({ error: 'Session invalid. Please log in again.' });
+          } else {
+            console.log('[authorize] Profile created successfully for:', req.user.id);
+            req.user.role = newProfile.role;
+            req.user.fullName = newProfile.full_name;
           }
-
-          console.log('[authorize] Profile created successfully for:', req.user.id);
-          req.user.role = newProfile.role;
-          req.user.fullName = newProfile.full_name;
         } catch (createErr) {
           console.error('[authorize] Exception creating profile:', createErr);
-          return res.status(500).json({ error: 'Failed to create user profile' });
+          // Force logout on profile creation exception
+          console.log('[authorize] Profile creation exception, forcing logout for user:', req.user.id);
+          return res.status(401).json({ error: 'Session invalid. Please log in again.' });
         }
       } else {
         // Attach role and profile info to req.user
@@ -123,13 +131,17 @@ export const attachUserRole = async (req, res, next) => {
 
       return next();
     } catch (err) {
-      console.error('Error fetching user profile:', err);
-      return res.status(500).json({ error: 'Failed to fetch user profile' });
+      console.error('Unexpected error in attachUserRole:', err);
+      // Force logout on unexpected errors
+      console.log('[authorize] Unexpected error in attachUserRole, forcing logout for user:', req.user.id);
+      return res.status(401).json({ error: 'Session invalid. Please log in again.' });
     }
     
   } catch (error) {
     console.error('Error in attachUserRole middleware:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    // Force logout on middleware error
+    console.log('[authorize] Middleware error, forcing logout for user:', req.user?.id);
+    return res.status(401).json({ error: 'Session invalid. Please log in again.' });
   }
 };
 

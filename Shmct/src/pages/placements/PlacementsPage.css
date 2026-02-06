@@ -944,8 +944,9 @@
 
 .installments-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(clamp(120px, 100%, 180px), 1fr));
+  gap: clamp(8px, 2vw, 12px);
+  width: 100%;
 }
 
 .installment-empty {
@@ -959,25 +960,27 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 12px;
+  padding: clamp(8px, 2.5vw, 14px);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  aspect-ratio: 1 / 1;
+  border-radius: clamp(8px, 1.5vw, 14px);
+  min-height: auto;
+  transition: all 0.2s ease;
 }
 
 .installment-item.actionable {
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .installment-item.actionable:hover {
   transform: translateY(-2px);
   border-color: rgba(255, 255, 255, 0.12);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .installment-item.actionable:active {
@@ -988,48 +991,152 @@
   margin: 0;
   color: #ffffff;
   font-weight: 700;
+  font-size: clamp(13px, 2.5vw, 16px);
+  word-break: break-word;
 }
 
 .installment-date {
-  margin: 2px 0 0;
+  margin: clamp(2px, 0.5vw, 4px) 0 0;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
+  font-size: clamp(11px, 1.8vw, 13px);
+  word-break: break-word;
 }
 
 .installment-remarks {
-  margin: 6px 0 0;
+  margin: clamp(4px, 1vw, 8px) 0 0;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
+  font-size: clamp(11px, 1.6vw, 12px);
   font-style: italic;
-  padding: 6px 8px;
+  padding: clamp(4px, 1vw, 6px) clamp(6px, 1.5vw, 8px);
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
+  border-radius: clamp(4px, 0.8vw, 6px);
   border-left: 2px solid rgba(99, 102, 241, 0.3);
+  line-height: 1.3;
+  word-break: break-word;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .installment-method {
-  padding: 6px 10px;
+  padding: clamp(4px, 0.8vw, 6px) clamp(8px, 1.5vw, 10px);
   border-radius: 999px;
   background: rgba(99, 102, 241, 0.18);
   color: #c7d2fe;
   font-weight: 600;
-  font-size: 12px;
+  font-size: clamp(10px, 1.5vw, 12px);
   text-transform: capitalize;
   align-self: flex-end;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-@media (max-width: 600px) {
+/* Ultra-small devices (< 320px) */
+@media (max-width: 319px) {
   .installments-list {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
-}
-
-@media (max-width: 460px) {
-  .installments-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  
   .installment-item {
-    aspect-ratio: auto;
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+  
+  .installment-amount {
+    font-size: 12px;
+  }
+  
+  .installment-date {
+    font-size: 10px;
+  }
+  
+  .installment-remarks {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+  
+  .installment-method {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+}
+
+/* Small mobile devices (320px - 480px) */
+@media (min-width: 320px) and (max-width: 480px) {
+  .installments-list {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+  }
+  
+  .installment-item {
+    padding: 8px 10px;
+    border-radius: 9px;
+  }
+  
+  .installment-amount {
+    font-size: 13px;
+  }
+  
+  .installment-date {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  
+  .installment-remarks {
+    font-size: 11px;
+    padding: 4px 6px;
+    margin-top: 4px;
+  }
+  
+  .installment-method {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+}
+
+/* Medium mobile devices (481px - 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  .installments-list {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  
+  .installment-item {
+    padding: 10px 12px;
+  }
+  
+  .installment-amount {
+    font-size: 14px;
+  }
+}
+
+/* Tablet devices (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .installments-list {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 11px;
+  }
+  
+  .installment-item {
+    padding: 11px 13px;
+  }
+}
+
+/* Large devices (1025px+) */
+@media (min-width: 1025px) {
+  .installments-list {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  
+  .installment-item {
+    padding: 12px 14px;
   }
 }
 
@@ -1444,45 +1551,6 @@
   .installments-list {
     grid-template-columns: 1fr;
   }
-
-  .add-installment {
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .add-installment-header {
-    font-size: 13px;
-    gap: 8px;
-  }
-
-  .add-installment-fields {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .form-label {
-    font-size: 12px;
-    gap: 6px;
-  }
-
-  .form-label svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  .add-installment input,
-  .add-installment select,
-  .add-installment textarea {
-    padding: 9px 10px;
-    font-size: 13px;
-  }
-
-  .add-installment-btn {
-    width: 100%;
-    justify-content: center;
-    padding: 10px 16px;
-    font-size: 13px;
-  }
 }
 
 /* Tablet devices (769px - 1024px) */
@@ -1508,20 +1576,6 @@
 
   .installments-list {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .add-installment {
-    padding: 14px;
-    gap: 14px;
-  }
-
-  .add-installment-fields {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-
-  .form-group.full-width {
-    grid-column: 1 / -1;
   }
 }
 
@@ -1609,21 +1663,12 @@
   }
 
   .installments-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
   .installment-item {
-    flex-direction: column;
-    align-items: flex-start;
     padding: 8px 10px;
-    gap: 6px;
-  }
-
-  .installment-method {
-    align-self: flex-start;
-    font-size: 11px;
-    padding: 4px 8px;
   }
 
   .add-installment {

@@ -942,28 +942,6 @@ export const StudentProvider = ({ children }) => {
     console.log('[StudentContext] getAuditLog called with filters:', filters, 'auditLog length:', auditLog.length);
     let filteredLog = [...auditLog];
     
-    // Filter by batch if specified
-    if (filters.batch && filters.batch !== 'all') {
-      // Find the batch object by name to get its ID
-      const batchObj = batches.find((b) => b.batch_name === filters.batch);
-      console.log('[StudentContext] Filtering by batch:', filters.batch, 'batchObj:', batchObj);
-      
-      if (batchObj) {
-        // Filter audit logs by batch_id (direct match)
-        filteredLog = filteredLog.filter((entry) => {
-          const matches = entry.batchId === batchObj.id;
-          if (!matches) {
-            console.log('[StudentContext] Entry filtered out:', entry.entityName, 'batchId:', entry.batchId, 'expected:', batchObj.id);
-          }
-          return matches;
-        });
-        console.log('[StudentContext] After batch filter, remaining logs:', filteredLog.length);
-      } else {
-        console.warn('[StudentContext] Batch not found:', filters.batch, '- showing all logs');
-        // Don't filter by batch if batch not found - show all logs instead of empty array
-      }
-    }
-    
     if (filters.action) {
       filteredLog = filteredLog.filter((entry) => entry.action === filters.action);
     }
