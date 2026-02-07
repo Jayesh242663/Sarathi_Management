@@ -55,6 +55,10 @@ export const generateCsrfToken = (req, res) => {
  */
 export const csrfErrorHandler = (err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN' || err.message?.includes('CSRF')) {
+    // Add CORS headers for cross-origin requests
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     // CSRF token errors should result in a 403
     res.status(403).json({
       error: 'Invalid CSRF token',
