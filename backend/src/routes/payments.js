@@ -21,10 +21,10 @@ const paymentCreateSchema = z.object({
   paymentMethod: z.enum(['cash', 'upi', 'card', 'bank_transfer', 'cheque'], {
     errorMap: () => ({ message: 'Invalid payment method' })
   }),
-  bankMoneyReceived: z.string().max(100).optional(),
-  chequeNumber: z.string().max(50).optional(),
-  remarks: z.string().max(500).optional(),
-  receiptNumber: z.string().max(100).optional(),
+  bankMoneyReceived: z.string().max(100).optional().nullable(),
+  chequeNumber: z.string().max(50).optional().nullable(),
+  remarks: z.string().max(500).optional().nullable(),
+  receiptNumber: z.string().max(100).optional().nullable(),
 });
 
 // Secure all payment routes

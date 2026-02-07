@@ -664,9 +664,9 @@ export const StudentProvider = ({ children }) => {
       amount: paymentData.amount,
       paymentDate: paymentData.paymentDate,
       paymentMethod: paymentData.paymentMethod,
-      bankMoneyReceived: paymentData.bankMoneyReceived || null,
-      chequeNumber: paymentData.chequeNumber || null,
-      remarks: paymentData.remarks || '',
+      bankMoneyReceived: paymentData.bankMoneyReceived || undefined,
+      chequeNumber: paymentData.chequeNumber || undefined,
+      remarks: paymentData.remarks || undefined,
       receiptNumber: paymentData.receiptNumber,
     };
 
