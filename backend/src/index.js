@@ -11,7 +11,6 @@ import path from 'path';
 
 import auth from './middleware/auth.js';
 import errorHandler from './middleware/error.js';
-import { csrfProtection, generateCsrfToken, csrfErrorHandler } from './middleware/csrf.js';
 import { isSupabaseConfigured } from './config/supabase.js';
 
 import authRouter from './routes/auth.js';
@@ -68,7 +67,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   maxAge: 3600
 };
 app.use(cors(corsOptions));
@@ -136,7 +135,7 @@ app.use(compression());
 app.use(express.json({ 
   limit: '1mb'  // Limit request body size to prevent DoS
 }));
-app.use(cookieParser());  // Required for CSRF protection
+app.use(cookieParser());
 app.use(auth);
 
 // Health check endpoint (no /api prefix for Docker)
@@ -149,11 +148,6 @@ app.get('/health', (req, res) => {
 // Returns basic status only - no sensitive configuration info
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
-});
-
-// CSRF token endpoint - available after authentication
-app.get('/api/csrf-token', (req, res) => {
-  generateCsrfToken(req, res);
 });
 
 // Debug endpoint to check loaded routes - ONLY in development with authentication
@@ -227,31 +221,29 @@ app.use('/api/v1/', globalLimiter);
 // Auth routes with granular rate limiting
 app.use('/api/v1/auth/session', sessionLimiter, authRouter);
 app.use('/api/v1/auth/refresh', sessionLimiter, authRouter);
-app.use('/api/v1/auth', authLimiter, authRouter);  // No CSRF on auth endpoints
-app.use('/api/v1/courses', csrfProtection, coursesRouter);
-app.use('/api/v1/batches', csrfProtection, batchesRouter);
-app.use('/api/v1/students', csrfProtection, studentsRouter);
-app.use('/api/v1/payments', financialLimiter, csrfProtection, paymentsRouter);
-app.use('/api/v1/expenses', financialLimiter, csrfProtection, expensesRouter);
-app.use('/api/v1/placements', csrfProtection, placementsRouter);
-app.use('/api/v1/placement-installments', financialLimiter, csrfProtection, placementInstallmentsRouter);
-app.use('/api/v1/data', csrfProtection, dataRouter);
+app.use('/api/v1/auth', authLimiter, authRouter);
+app.use('/api/v1/courses', coursesRouter);
+app.use('/api/v1/batches', batchesRouter);
+app.use('/api/v1/students', studentsRouter);
+app.use('/api/v1/payments', financialLimiter, paymentsRouter);
+app.use('/api/v1/expenses', financialLimiter, expensesRouter);
+app.use('/api/v1/placements', placementsRouter);
+app.use('/api/v1/placement-installments', financialLimiter, placementInstallmentsRouter);
+app.use('/api/v1/data', dataRouter);
 
 // Backward compatibility - legacy routes (deprecated)
 // Auth routes with granular rate limiting
 app.use('/api/auth/session', sessionLimiter, authRouter);
 app.use('/api/auth/refresh', sessionLimiter, authRouter);
-app.use('/api/auth', authLimiter, authRouter);  // No CSRF on auth endpoints
-app.use('/api/courses', csrfProtection, coursesRouter);
-app.use('/api/batches', csrfProtection, batchesRouter);
-app.use('/api/students', csrfProtection, studentsRouter);
-app.use('/api/payments', financialLimiter, csrfProtection, paymentsRouter);
-app.use('/api/expenses', financialLimiter, csrfProtection, expensesRouter);
-app.use('/api/placements', csrfProtection, placementsRouter);
-app.use('/api/placement-installments', financialLimiter, csrfProtection, placementInstallmentsRouter);
-app.use('/api/data', csrfProtection, dataRouter);
-
-app.use(csrfErrorHandler);
+app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/courses', coursesRouter);
+app.use('/api/batches', batchesRouter);
+app.use('/api/students', studentsRouter);
+app.use('/api/payments', financialLimiter, paymentsRouter);
+app.use('/api/expenses', financialLimiter, expensesRouter);
+app.use('/api/placements', placementsRouter);
+app.use('/api/placement-installments', financialLimiter, placementInstallmentsRouter);
+app.use('/api/data', dataRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });

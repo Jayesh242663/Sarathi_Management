@@ -25,11 +25,15 @@ const {
   doubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET || 'dev-csrf-secret-only-for-development-change-me',
-  getSessionIdentifier: (req) => req.user?.id || req.ip || 'anonymous',
+  getSessionIdentifier: (req) => {
+    const sessionId = req.user?.id || req.ip || 'anonymous';
+    console.debug('[CSRF] Session identifier:', sessionId, 'user:', !!req.user?.id, 'ip:', req.ip);
+    return sessionId;
+  },
   cookieName: csrfCookieName,
   cookieOptions: {
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'strict',  // 'none' in production for cross-origin requests
+    sameSite: isProduction ? 'none' : 'lax',  // Use 'lax' in dev for same-site requests, 'none' in prod for cross-origin
     secure: isProduction,
     path: '/',
   },

@@ -8,10 +8,6 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
-const CSRF_HEADER = 'x-csrf-token';
-const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-let csrfTokenCache = null;
-let csrfTokenPromise = null;
 
 // Token refresh state
 let isRefreshing = false;
@@ -48,31 +44,7 @@ function getHeaders() {
   };
 }
 
-async function loadCsrfToken() {
-  if (csrfTokenCache) return csrfTokenCache;
-  if (csrfTokenPromise) return csrfTokenPromise;
-
-  csrfTokenPromise = nativeFetch(`${API_BASE}/csrf-token`, {
-    method: 'GET',
-    headers: getHeaders(),
-    credentials: 'include'  // Browser auto-sends httpOnly cookies
-  })
-    .then(async (response) => {
-      if (!response.ok) return null;
-      const data = await response.json();
-      return data?.csrfToken || null;
-    })
-    .catch(() => null)
-    .finally(() => {
-      csrfTokenPromise = null;
-    });
-
-  csrfTokenCache = await csrfTokenPromise;
-  return csrfTokenCache;
-}
-
-async function apiFetch(url, options = {}, retry = false) {
-  const method = (options.method || 'GET').toUpperCase();
+async function apiFetch(url, options = {}) {
   const headers = { ...getHeaders(), ...(options.headers || {}) };
   const finalOptions = {
     ...options,
@@ -80,21 +52,7 @@ async function apiFetch(url, options = {}, retry = false) {
     credentials: 'include'  // Browser automatically sends httpOnly cookies
   };
 
-  // Add CSRF token for write operations
-  if (WRITE_METHODS.has(method)) {
-    const csrfToken = await loadCsrfToken();
-    if (csrfToken) headers[CSRF_HEADER] = csrfToken;
-  }
-
   const response = await nativeFetch(url, finalOptions);
-  
-  // CSRF token retry on 403
-  if (!retry && WRITE_METHODS.has(method) && response.status === 403) {
-    csrfTokenCache = null;
-    await loadCsrfToken();
-    return apiFetch(url, options, true);
-  }
-
   return response;
 }
 
