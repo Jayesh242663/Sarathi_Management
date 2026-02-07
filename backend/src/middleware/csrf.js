@@ -29,7 +29,7 @@ const {
   cookieName: csrfCookieName,
   cookieOptions: {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: isProduction ? 'none' : 'strict',  // 'none' in production for cross-origin requests
     secure: isProduction,
     path: '/',
   },

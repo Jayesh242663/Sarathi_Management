@@ -182,7 +182,7 @@ router.post('/login', async (req, res, next) => {
     res.cookie('accessToken', data.session.access_token, {
       httpOnly: true,
       secure: isProduction,  // HTTPS only in production
-      sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+      sameSite: isProduction ? 'none' : 'lax',  // 'none' in production enables cross-origin cookies (requires secure: true and credentials: include on frontend)
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/',
     });
@@ -191,7 +191,7 @@ router.post('/login', async (req, res, next) => {
     res.cookie('refreshToken', data.session.refresh_token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+      sameSite: isProduction ? 'none' : 'lax',  // 'none' in production enables cross-origin cookies (requires secure: true and credentials: include on frontend)
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
     });
@@ -322,13 +322,13 @@ router.post('/logout', async (req, res, next) => {
     res.clearCookie('accessToken', {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
     });
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
     });
 
@@ -422,7 +422,7 @@ router.post('/refresh', async (req, res, next) => {
     res.cookie('accessToken', data.session.access_token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+      sameSite: isProduction ? 'none' : 'lax',  // 'none' in production enables cross-origin cookies (requires secure: true and credentials: include on frontend)
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/',
     });
@@ -431,7 +431,7 @@ router.post('/refresh', async (req, res, next) => {
       res.cookie('refreshToken', data.session.refresh_token, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',  // 'lax' in dev for cross-port requests
+        sameSite: isProduction ? 'none' : 'lax',  // 'none' in production enables cross-origin cookies (requires secure: true and credentials: include on frontend)
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
       });
