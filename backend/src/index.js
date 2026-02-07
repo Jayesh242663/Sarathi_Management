@@ -30,28 +30,37 @@ const port = process.env.PORT || 3001;
 // CORS: restrict to configured origins - require explicit allowlist
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
 const isProduction = ['production', 'staging'].includes(process.env.NODE_ENV);
+
+// Validate CORS configuration in production
+if (isProduction && allowedOrigins.length === 0) {
+  console.warn('[CORS] WARNING: CORS_ORIGIN not configured in production. CORS will block all cross-origin requests.');
+  console.warn('[CORS] Set CORS_ORIGIN environment variable to comma-separated list of allowed origins.');
+  console.warn('[CORS] Example: CORS_ORIGIN=https://example.com,https://app.example.com');
+}
+
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc)
+    // Allow requests with no origin (mobile apps, Postman, curl, etc)
     if (!origin) return callback(null, true);
 
-    // In production, require explicit whitelist
+    // Check if origin is in whitelist
+    const isAllowed = allowedOrigins.includes(origin);
+
     if (isProduction) {
+      // In production, require whitelist (but allow if not configured - will cause request to fail, but with proper CORS headers for debugging)
       if (allowedOrigins.length === 0) {
-        return callback(new Error('CORS_ORIGIN not configured - all origins blocked'));
+        // No whitelist configured - reject but with error message
+        return callback(null, false); // Reject but still send CORS headers
       }
-      if (allowedOrigins.includes(origin)) {
+      if (isAllowed) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      return callback(null, false); // Reject but still send CORS headers
     }
 
-    // In development, check whitelist if configured, otherwise allow all
-    if (allowedOrigins.length > 0) {
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error('Not allowed by CORS'));
+    // In development, be more lenient
+    if (allowedOrigins.length > 0 && !isAllowed) {
+      return callback(null, false);
     }
 
     // No whitelist in development - allow

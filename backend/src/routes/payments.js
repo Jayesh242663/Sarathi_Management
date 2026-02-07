@@ -18,10 +18,10 @@ const paymentCreateSchema = z.object({
     (date) => !isNaN(Date.parse(date)),
     'Invalid payment date'
   ),
-  paymentMethod: z.enum(['cash', 'cheque', 'bank_transfer', 'online'], {
+  paymentMethod: z.enum(['cash', 'upi', 'card', 'bank_transfer', 'cheque'], {
     errorMap: () => ({ message: 'Invalid payment method' })
   }),
-  bankMoneyReceived: z.number().nonnegative().optional(),
+  bankMoneyReceived: z.string().max(100).optional(),
   chequeNumber: z.string().max(50).optional(),
   remarks: z.string().max(500).optional(),
   receiptNumber: z.string().max(100).optional(),

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireSupabase } from '../config/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { attachUserRole, requireAdmin, requireAuditorOrAdmin } from '../middleware/authorize.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
