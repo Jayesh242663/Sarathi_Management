@@ -386,7 +386,7 @@
   right: 0;
   top: 100%;
   margin-top: 0.75rem;
-  width: 240px;
+  width: 280px;
   background: rgba(20, 20, 20, 0.98);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -411,7 +411,7 @@
 
 .navbar-dropdown-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
 }
@@ -439,9 +439,9 @@
   font-weight: 600;
   color: #ffffff;
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .navbar-dropdown-info .email {
