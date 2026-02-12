@@ -72,7 +72,6 @@ export const AuthProvider = ({ children }) => {
       if (storedUser) {
         // httpOnly cookies are automatically sent by browser
         // No need to check token expiration - server handles it
-        console.log('[AuthContext] Restoring user session from storage');
         setUser(storedUser);
         
         // Verify session in background (non-blocking)
@@ -112,11 +111,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('[AuthContext] Attempting login with email:', email);
       // Try API login first
       const response = await apiService.post('/auth/login', { email, password });
-      
-      console.log('[AuthContext] Login response:', response);
       
       if (response && response.success && response.user) {
         const userData = {
@@ -127,17 +123,14 @@ export const AuthProvider = ({ children }) => {
           loginTime: new Date().toISOString(),
         };
         
-        console.log('[AuthContext] Setting user:', userData);
         setUser(userData);
         setToStorage(STORAGE_KEYS.USER, userData);
         // NOTE: Tokens are now in httpOnly cookies, not localStorage
         
         resetAuthInvalid();
-        console.log('[AuthContext] Login successful - tokens in secure httpOnly cookies');
         return { success: true };
       }
       
-      console.log('[AuthContext] Invalid response format:', response);
       return { success: false, error: 'Invalid email or password' };
     } catch (error) {
       console.error('[AuthContext] Login error:', error);
@@ -145,7 +138,6 @@ export const AuthProvider = ({ children }) => {
       
       // Fallback to demo login
       if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
-        console.log('[AuthContext] Using demo credentials');
         const userData = {
           id: '1',
           email: DEFAULT_ADMIN.email,

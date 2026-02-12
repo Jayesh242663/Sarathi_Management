@@ -55,8 +55,6 @@ const AuditPage = () => {
   }, [location.state, auditLog]);
 
   const filteredAuditLog = useMemo(() => {
-    console.log('[AuditPage] Filtering audit log. auditLog length:', auditLog.length);
-    
     let filters = {};
     
     if (actionFilter !== 'all') {
@@ -74,10 +72,8 @@ const AuditPage = () => {
     
     // Get all audit logs matching the filters
     const allLogs = getAuditLog(filters);
-    console.log('[AuditPage] After getAuditLog, allLogs length:', allLogs.length);
 
     if (showAllEntries) {
-      console.log('[AuditPage] Showing all entries:', allLogs.length);
       return allLogs;
     }
 
@@ -92,7 +88,6 @@ const AuditPage = () => {
       entry.action === 'SCHOLARSHIP' ||
       entry.action === 'DISCOUNT'
     ));
-    console.log('[AuditPage] Showing financial entries only:', financialLogs.length);
     return financialLogs;
   }, [getAuditLog, searchTerm, actionFilter, dateRange, showAllEntries, auditLog.length]);
 

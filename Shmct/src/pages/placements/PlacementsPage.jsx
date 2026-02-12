@@ -80,8 +80,6 @@ const PlacementsPage = () => {
         (inst) => inst.installmentType === 'company_costing'
       );
       
-      console.log(`[PlacementsPage] Placement ${student ? student.firstName : 'Unknown'}: ${myCostingInstallments.length} my_costing, ${companyCostingInstallments.length} company_costing`);
-      
       const installmentsPaid = myCostingInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
       const totalPaid = installmentsPaid;
       
@@ -124,12 +122,8 @@ const PlacementsPage = () => {
 
   // Filter installments by type based on view mode
   const placementsWithFilteredInstallments = useMemo(() => {
-    console.log('[PlacementsPage] Filtering installments, viewMode:', viewMode);
     return placementsWithStudent.map((placement) => {
       const allInstallments = placement.installments || [];
-      console.log(`[PlacementsPage] Placement ${placement.studentName} has ${allInstallments.length} total installments:`, 
-        allInstallments.map(i => ({ id: i.id, type: i.installmentType, amount: i.amount }))
-      );
       
       if (viewMode === 'company-payment') {
         // Only show company_costing installments
@@ -140,7 +134,6 @@ const PlacementsPage = () => {
         const companyPaid = filteredInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
         const companyRemaining = (placement.companyCosting || 0) - companyPaid;
         
-        console.log(`[PlacementsPage] Filtered to ${filteredInstallments.length} company_costing installments`);
         return {
           ...placement,
           installments: filteredInstallments,
@@ -152,7 +145,6 @@ const PlacementsPage = () => {
         const filteredInstallments = allInstallments.filter(
           (inst) => !inst.installmentType || inst.installmentType === 'my_costing'
         );
-        console.log(`[PlacementsPage] Filtered to ${filteredInstallments.length} my_costing installments`);
         return {
           ...placement,
           installments: filteredInstallments,
@@ -273,8 +265,6 @@ const PlacementsPage = () => {
       alert('Please enter a valid amount');
       return;
     }
-
-    console.log('Adding installment:', { placementId, currentForm, amountValue, viewMode });
     
     try {
       // Use appropriate function based on view mode

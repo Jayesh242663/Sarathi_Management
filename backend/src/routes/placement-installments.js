@@ -124,14 +124,10 @@ router.post('/', async (req, res, next) => {
       throw error;
     }
     
-    console.log('[placement-installments] Installment created:', data);
-
     // Write audit log for placement payment (best-effort)
     const created = data?.[0];
     try {
       if (created) {
-        console.log('[placement-installments] Starting audit log creation for installment:', created.id);
-        console.log('[placement-installments] Created installment data:', JSON.stringify(created, null, 2));
         
         // Fetch batch_id from placement or student
         let batchId = null;
@@ -143,18 +139,14 @@ router.post('/', async (req, res, next) => {
 
           if (batchId) {
             logger.debug('[placement-installments] Resolved batch_id');
-          } else {
-            console.warn('[placement-installments] WARNING: Could not find batch_id for installment:', created.id);
           }
         } catch (e) {
-          console.warn('[placement-installments] Exception fetching batch_id:', e);
         }
 
         // Fetch student name for audit log entity_name
         let entityName = 'Placement Payment';
         const installmentType = created.installment_type || 'my_costing'; // Fallback if column doesn't exist
         const isCompanyPayment = installmentType === 'company_costing';
-        console.log('[placement-installments] Installment type:', installmentType, 'isCompanyPayment:', isCompanyPayment);
         
         try {
           const { data: studentData, error: studentError } = await sb
@@ -171,11 +163,8 @@ router.post('/', async (req, res, next) => {
               entityName = `${studentName} - Placement Installment #${created.installment_number || 1}`;
             }
             logger.debug('[placement-installments] Resolved student name for audit log');
-          } else {
-            console.warn('[placement-installments] Could not fetch student name:', studentError);
           }
         } catch (e) {
-          console.warn('[placement-installments] Exception fetching student name:', e);
         }
 
         const auditPayload = {
@@ -199,13 +188,9 @@ router.post('/', async (req, res, next) => {
           transaction_date: created.payment_date || created.due_date || new Date().toISOString().slice(0,10),
         };
         
-        console.log('[placement-installments] Inserting audit log with payload:', JSON.stringify(auditPayload, null, 2));
-        
         const { data: auditData, error: auditError } = await sb.from('audit_logs').insert([auditPayload]).select();
 
         if (auditError) {
-          console.error('[placement-installments] Audit log insert error:', auditError);
-          console.error('[placement-installments] Audit payload was:', JSON.stringify(auditPayload, null, 2));
           logger.error('[placement-installments] Audit log insert error', auditError);
           // CRITICAL: Roll back installment if audit fails
           await sb.from('placement_installments').delete().eq('id', created.id);
@@ -356,8 +341,6 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
       throw new Error(sanitized);
     }
     
-    console.log('[placement-installments] Installment deleted');
-
     // Write audit log for installment deletion (best-effort)
     try {
       if (installmentToDelete) {

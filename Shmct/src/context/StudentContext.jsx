@@ -210,7 +210,6 @@ export const StudentProvider = ({ children }) => {
 
       setLoading(true);
       setDataLoadError(null);
-      console.log('[StudentContext] Loading authenticated data for user:', user.email, `(attempt ${retryCount + 1})`);
 
       const response = await authFetch(`${API_BASE}/data/snapshot`, {
         method: 'GET',
@@ -219,7 +218,6 @@ export const StudentProvider = ({ children }) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[StudentContext] Error response:', response.status, errorText);
         
         // If 401 Unauthorized, the user needs to log in again
         if (response.status === 401) {
@@ -232,7 +230,6 @@ export const StudentProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('[StudentContext] Data received:', data);
 
       const {
         batches = [],
@@ -258,7 +255,6 @@ export const StudentProvider = ({ children }) => {
           });
 
           if (!expensesResponse.ok) {
-            console.warn('[StudentContext] Failed to load expenses:', expensesResponse.status);
             break;
           }
 
@@ -278,29 +274,11 @@ export const StudentProvider = ({ children }) => {
           page += 1;
         }
 
-        console.log('[StudentContext] Expenses loaded:', expenses.length);
       } catch (expenseError) {
-        console.warn('[StudentContext] Error loading expenses:', expenseError);
         // Continue loading other data even if expenses fail
       }
 
-      console.log('[StudentContext] Extracted arrays:', {
-        batchesCount: batches.length,
-        coursesCount: courses.length,
-        studentsCount: studentRows.length,
-        paymentsCount: paymentRows.length,
-        placementsCount: placementRows.length,
-        installmentsCount: placementInstallments.length,
-        auditLogsCount: auditLogs.length,
-        expensesCount: expenses.length,
-      });
 
-      if (batches.length === 0) {
-        console.warn('[StudentContext] WARNING: No batches returned from backend!');
-      }
-      if (courses.length === 0) {
-        console.warn('[StudentContext] WARNING: No courses returned from backend!');
-      }
 
       const batchLookup = new Map(batches.map((b) => [b.id, b]));
       const courseLookup = new Map(courses.map((c) => [c.id, c]));
@@ -309,9 +287,6 @@ export const StudentProvider = ({ children }) => {
       const mappedPayments = (paymentRows || []).filter(Boolean).map(mapPayment);
       const mappedPlacements = (placementRows || []).filter(Boolean).map((p) => mapPlacement(p, placementInstallments, batchLookup));
       const mappedAuditLogs = (auditLogs || []).filter(Boolean).map(mapAudit);
-
-      console.log('[StudentContext] Mapped data:', { mappedStudents, mappedPayments, mappedPlacements, mappedAuditLogs });
-      console.log('[StudentContext] Audit logs count:', mappedAuditLogs.length);
 
       setStudents(mappedStudents);
       setPayments(mappedPayments);
@@ -335,23 +310,18 @@ export const StudentProvider = ({ children }) => {
         const savedBatchExists = savedBatch && batches.find((b) => b.batch_name === savedBatch);
         
         if (savedBatchExists) {
-          console.log('[StudentContext] Using saved batch:', savedBatch);
           setCurrentBatchState(savedBatch);
         } else {
           // Saved batch doesn't exist, use active batch or first batch
           const fallbackBatch = batches.find((b) => b.is_active) || batches[0];
           if (fallbackBatch) {
-            console.log('[StudentContext] Setting batch to:', fallbackBatch.batch_name);
             setCurrentBatchState(fallbackBatch.batch_name);
             setToStorage(STORAGE_KEYS.SELECTED_BATCH, fallbackBatch.batch_name);
           }
         }
       }
 
-      console.log('[StudentContext] Data loaded successfully');
     } catch (err) {
-      console.error('[StudentContext] Error loading data from Supabase:', err);
-      console.error('[StudentContext] Stack:', err.stack);
       setDataLoadError(err.message);
 
       if (err?.isAuthError || /authentication required|session expired/i.test(err?.message || '')) {
@@ -370,7 +340,6 @@ export const StudentProvider = ({ children }) => {
       // Retry with exponential backoff (max 3 attempts)
       if (retryCount < 2) {
         const delayMs = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-        console.log(`[StudentContext] Retrying in ${delayMs}ms...`);
         setLoadRetryCount(retryCount + 1);
         setTimeout(() => {
           loadSupabaseData(retryCount + 1);
@@ -386,10 +355,8 @@ export const StudentProvider = ({ children }) => {
     const user = getFromStorage(STORAGE_KEYS.USER);
     
     if (user) {
-      console.log('[StudentContext] Authenticated user detected. Loading data for:', user.email);
       loadSupabaseData();
     } else {
-      console.log('[StudentContext] Not authenticated. Skipping data load. User:', !!user);
       setLoading(false);
       setDataLoadError(null);
       // Clear all data if not authenticated
@@ -407,10 +374,8 @@ export const StudentProvider = ({ children }) => {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === STORAGE_KEYS.USER && e.newValue) {
-        console.log('[StudentContext] User detected. Reloading data.');
         loadSupabaseData();
       } else if (e.key === STORAGE_KEYS.USER && !e.newValue) {
-        console.log('[StudentContext] User removed. Clearing all data.');
         setStudents([]);
         setPayments([]);
         setPlacements([]);
@@ -732,8 +697,6 @@ export const StudentProvider = ({ children }) => {
 
   // Placement installment operations
   const addPlacementInstallment = useCallback(async (placementId, installmentData, installmentType = 'my_costing') => {
-    console.log('addPlacementInstallment called:', { placementId, installmentData, installmentType });
-    
     // Find the placement to get student_id
     const placement = placements.find((p) => p.id === placementId);
     if (!placement) {
@@ -753,8 +716,6 @@ export const StudentProvider = ({ children }) => {
       }
     );
     const nextInstallmentNumber = sameTypeInstallments.length + 1;
-
-    console.log(`[addPlacementInstallment] Installment type: ${installmentType}, Existing same-type count: ${sameTypeInstallments.length}, Next number: ${nextInstallmentNumber}`);
 
     // Prepare payload for API
     const payload = {
@@ -779,7 +740,6 @@ export const StudentProvider = ({ children }) => {
     // Persist placement country if provided for the first time
     const shouldUpdateCountry = Boolean(installmentData.country) && (!placement.country || placement.country === 'TBD');
     if (shouldUpdateCountry) {
-      console.log('[addPlacementInstallment] Persisting placement country:', installmentData.country);
       await PlacementService.update(placementId, { placement_location: installmentData.country });
     }
 
@@ -817,7 +777,6 @@ export const StudentProvider = ({ children }) => {
         const student = students.find((s) => s.id === p.studentId);
         placementStudentName = student ? `${student.firstName} ${student.lastName}` : placementStudentName;
         
-        console.log('Updated placement:', updatedPlacement);
         return updatedPlacement;
       });
     });
@@ -910,8 +869,6 @@ export const StudentProvider = ({ children }) => {
       throw new Error('Placement not found');
     }
 
-    console.log('[updatePlacementCosts] Updating placement:', placementId, { country, companyCosting, myCosting });
-
     const payload = {
       company_cost: companyCosting,
       institution_cost: myCosting,
@@ -919,13 +876,9 @@ export const StudentProvider = ({ children }) => {
       company_name: placement.company || 'To Be Determined',
     };
 
-    console.log('[updatePlacementCosts] Payload:', payload);
-
     // Update in Supabase
     const response = await PlacementService.update(placementId, payload);
     const updated = response.data || response;
-
-    console.log('[updatePlacementCosts] Response from Supabase:', updated);
 
     if (!updated) {
       throw new Error('Failed to update placement in Supabase');
@@ -943,7 +896,6 @@ export const StudentProvider = ({ children }) => {
             profit: Number((updated.institution_cost || 0) - (updated.company_cost || 0)),
             company: updated.company_name,
           };
-          console.log('[updatePlacementCosts] Updated placement in state:', updatedPlacement);
           return updatedPlacement;
         }
         return p;
@@ -965,13 +917,10 @@ export const StudentProvider = ({ children }) => {
       },
       studentName
     );
-
-    console.log('[updatePlacementCosts] Update completed successfully');
   }, [placements, students, logAuditEvent]);
 
   // Get audit log with optional filtering
   const getAuditLog = useCallback((filters = {}) => {
-    console.log('[StudentContext] getAuditLog called with filters:', filters, 'auditLog length:', auditLog.length);
     let filteredLog = [...auditLog];
     
     if (filters.action) {
@@ -995,7 +944,6 @@ export const StudentProvider = ({ children }) => {
       );
     }
     
-    console.log('[StudentContext] Final filtered log length:', filteredLog.length);
     return filteredLog;
   }, [auditLog, batches]);
 

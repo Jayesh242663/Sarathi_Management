@@ -13,6 +13,27 @@ import auth from './middleware/auth.js';
 import errorHandler from './middleware/error.js';
 import { isSupabaseConfigured } from './config/supabase.js';
 
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[FATAL] Uncaught exception:', err.message);
+  // eslint-disable-next-line no-console
+  console.error(err.stack);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  // eslint-disable-next-line no-console
+  console.error('[FATAL] Unhandled rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Log startup information
+console.log('[startup] Node version:', process.version);
+console.log('[startup] Environment:', process.env.NODE_ENV || 'development');
+console.log('[startup] Supabase configured:', isSupabaseConfigured ? 'YES' : 'NO');
+
 import authRouter from './routes/auth.js';
 import coursesRouter from './routes/courses.js';
 import batchesRouter from './routes/batches.js';
@@ -22,9 +43,15 @@ import paymentsRouter from './routes/payments.js';
 import expensesRouter from './routes/expenses.js';
 import placementInstallmentsRouter from './routes/placement-installments.js';
 import placementsRouter from './routes/placements.js';
+import auditLogsRouter from './routes/audit-logs.js';
+
+console.log('[startup] All routes loaded successfully');
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 8080;
+
+console.log('[startup] Initializing Express app...');
+console.log('[startup] Listening port will be:', port);
 
 // CORS: restrict to configured origins - require explicit allowlist
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -229,6 +256,7 @@ app.use('/api/v1/payments', financialLimiter, paymentsRouter);
 app.use('/api/v1/expenses', financialLimiter, expensesRouter);
 app.use('/api/v1/placements', placementsRouter);
 app.use('/api/v1/placement-installments', financialLimiter, placementInstallmentsRouter);
+app.use('/api/v1/audit-logs', auditLogsRouter);
 app.use('/api/v1/data', dataRouter);
 
 // Backward compatibility - legacy routes (deprecated)
@@ -243,6 +271,7 @@ app.use('/api/payments', financialLimiter, paymentsRouter);
 app.use('/api/expenses', financialLimiter, expensesRouter);
 app.use('/api/placements', placementsRouter);
 app.use('/api/placement-installments', financialLimiter, placementInstallmentsRouter);
+app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/data', dataRouter);
 
 app.use((req, res) => {
@@ -253,5 +282,11 @@ app.use(errorHandler);
 
 app.listen(port, () => {
   // eslint-disable-next-line no-console
-  console.log(`[server] Listening on http://localhost:${port}`);
+  console.log(`[server] ✓ Server started successfully`);
+  console.log(`[server] ✓ Listening on port ${port}`);
+  console.log(`[server] ✓ Health check: http://localhost:${port}/health`);
+}).on('error', (err) => {
+  // eslint-disable-next-line no-console
+  console.error(`[server] ✗ Failed to start server:`, err.message);
+  process.exit(1);
 });
