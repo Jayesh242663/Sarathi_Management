@@ -23,7 +23,14 @@ import placementsRouter from './routes/placements.js';
 import auditLogsRouter from './routes/audit-logs.js';
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 8080;
+
+// Log startup information for debugging
+console.log('[server] Starting server...');
+console.log('[server] PORT:', port);
+console.log('[server] NODE_ENV:', process.env.NODE_ENV);
+console.log('[server] SUPABASE_URL:', process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing');
+console.log('[server] CORS_ORIGIN:', process.env.CORS_ORIGIN || 'Not set (will use default behavior)');
 
 // CORS: restrict to configured origins - require explicit allowlist
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -241,11 +248,28 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-// Create HTTP server
-const server = app.listen(port, '0.0.0.0', () => {
-  // eslint-disable-next-line no-console
-  console.log(`[server] Listening on http://0.0.0.0:${port}`);
-});
+// Create HTTP server with error handling
+let server;
+
+try {
+  server = app.listen(port, '0.0.0.0', () => {
+    // eslint-disable-next-line no-console
+    console.log(`[server] ✓ Successfully listening on http://0.0.0.0:${port}`);
+    console.log(`[server] Health check available at http://0.0.0.0:${port}/health`);
+  });
+
+  // Handle server errors
+  server.on('error', (err) => {
+    console.error('[server] Server error:', err);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[server] Port ${port} is already in use`);
+    }
+    process.exit(1);
+  });
+} catch (err) {
+  console.error('[server] Failed to start server:', err);
+  process.exit(1);
+}
 
 // Graceful shutdown for container orchestration (Kubernetes, Cloud Run, etc.)
 const gracefulShutdown = () => {
