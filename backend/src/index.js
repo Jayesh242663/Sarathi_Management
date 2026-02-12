@@ -24,39 +24,8 @@ import placementInstallmentsRouter from './routes/placement-installments.js';
 import placementsRouter from './routes/placements.js';
 import auditLogsRouter from './routes/audit-logs.js';
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  // eslint-disable-next-line no-console
-  console.error('[FATAL] Uncaught exception:', err.message);
-  // eslint-disable-next-line no-console
-  console.error(err.stack);
-  process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  // eslint-disable-next-line no-console
-  console.error('[FATAL] Unhandled rejection:', reason);
-  process.exit(1);
-});
-
-// Log startup information
-// eslint-disable-next-line no-console
-console.log('[startup] ✓ All modules loaded');
-// eslint-disable-next-line no-console
-console.log('[startup] Node version:', process.version);
-// eslint-disable-next-line no-console
-console.log('[startup] PORT env:', process.env.PORT || 'not set');
-// eslint-disable-next-line no-console
-console.log('[startup] NODE_ENV:', process.env.NODE_ENV || 'development');
-// eslint-disable-next-line no-console
-console.log('[startup] Supabase configured:', isSupabaseConfigured ? '✓' : '✗');
-
 const app = express();
 const port = process.env.PORT || 8080;
-
-// eslint-disable-next-line no-console
-console.log('[startup] Starting Express app on port', port);
 
 // CORS: restrict to configured origins - require explicit allowlist
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -99,7 +68,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   maxAge: 3600
 };
 app.use(cors(corsOptions));
@@ -285,44 +254,7 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-const server = app.listen(port, '0.0.0.0', () => {
+app.listen(port, () => {
   // eslint-disable-next-line no-console
-  console.log(`[server] ✓✓✓ SERVER LISTENING ON PORT ${port} ✓✓✓`);
-  // eslint-disable-next-line no-console
-  console.log(`[server] Health check: http://0.0.0.0:${port}/health`);
-  // eslint-disable-next-line no-console
-  console.log(`[server] Server ready to accept requests`);
-});
-
-// Set a timeout for the server startup (5 seconds)
-server.setTimeout(5000);
-
-// Handle server errors
-server.on('error', (err) => {
-  // eslint-disable-next-line no-console
-  console.error(`[server] ✗ Server error:`, err.message);
-  // eslint-disable-next-line no-console
-  console.error(err.stack);
-  process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  // eslint-disable-next-line no-console
-  console.log('[server] SIGTERM received, graceful shutdown');
-  server.close(() => {
-    // eslint-disable-next-line no-console
-    console.log('[server] Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  // eslint-disable-next-line no-console
-  console.log('[server] SIGINT received, graceful shutdown');
-  server.close(() => {
-    // eslint-disable-next-line no-console
-    console.log('[server] Server closed');
-    process.exit(0);
-  });
+  console.log(`[server] Listening on http://localhost:${port}`);
 });

@@ -11,19 +11,15 @@ RUN npm ci && npm cache clean --force
 # Copy source code
 COPY . .
 
-# Expose port (Cloud Run uses PORT env var, defaults to 8080)
+# Expose port
 EXPOSE 8080
 
-# Health check with increased tolerance for slow starts
-# Increased start-period from 40s to 120s to handle cold starts and DB migrations
-HEALTHCHECK --interval=5s --timeout=5s --start-period=120s --retries=10 \
-  CMD node -e "const p=process.env.PORT||8080;require('http').get('http://localhost:'+p+'/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))" || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Set NODE_ENV to production
+# Set NODE_ENV
 ENV NODE_ENV=production
 
-# Ensure PORT is set for Cloud Run (Cloud Run will override this with PORT=8080)
-ENV PORT=8080
-
-# Start the application with detailed logging
-CMD ["node", "--trace-uncaught", "src/index.js"]
+# Start the application
+CMD ["node", "src/index.js"]
