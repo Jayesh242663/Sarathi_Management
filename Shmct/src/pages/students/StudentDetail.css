@@ -453,6 +453,40 @@ svg.yellow {
   align-items: flex-end;
 }
 
+.payment-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.payment-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-preview-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.3);
+  transform: translateY(-1px);
+}
+
+.payment-preview-btn:active {
+  transform: translateY(0);
+}
+
+.payment-preview-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 .payment-edit-btn {
   display: inline-flex;
   align-items: center;
@@ -657,6 +691,16 @@ svg.yellow {
     height: 32px;
   }
 
+  .payment-item-actions {
+    gap: 0.35rem;
+  }
+
+  .payment-preview-btn,
+  .payment-edit-btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+  }
+
   .fee-row,
   .quick-info-row {
     flex-direction: column;
@@ -712,18 +756,35 @@ svg.yellow {
   }
 
   .payment-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .payment-item-left {
+    gap: 0.6rem;
+    align-items: center;
   }
 
   .payment-item-right {
-    text-align: left;
+    text-align: right;
+    align-items: flex-end;
+    gap: 0.35rem;
+  }
+
+  .payment-item-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   .payment-amount {
-    width: 100%;
     text-align: left;
+    margin-left: 0;
+  }
+
+  .payment-method,
+  .payment-bank {
     margin-left: 0;
   }
 }

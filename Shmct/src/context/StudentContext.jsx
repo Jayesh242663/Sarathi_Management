@@ -89,6 +89,7 @@ const mapPlacement = (placement, installments, batchLookup) => {
       status: inst.status,
       installmentNumber: inst.installment_number,
       paymentLocation: inst.payment_location || null,
+      installmentType: inst.installment_type || 'my_costing', // Default to 'my_costing' for backward compatibility
     })),
   };
 };
@@ -730,8 +731,8 @@ export const StudentProvider = ({ children }) => {
   }, [students, logAuditEvent]);
 
   // Placement installment operations
-  const addPlacementInstallment = useCallback(async (placementId, installmentData) => {
-    console.log('addPlacementInstallment called:', { placementId, installmentData });
+  const addPlacementInstallment = useCallback(async (placementId, installmentData, installmentType = 'my_costing') => {
+    console.log('addPlacementInstallment called:', { placementId, installmentData, installmentType });
     
     // Find the placement to get student_id
     const placement = placements.find((p) => p.id === placementId);
@@ -739,9 +740,21 @@ export const StudentProvider = ({ children }) => {
       throw new Error('Placement not found');
     }
 
-    // Get the next installment number for this placement
+    // Get the next installment number for this placement, counting only installments of the same type
     const existingInstallments = placement.installments || [];
-    const nextInstallmentNumber = existingInstallments.length + 1;
+    const sameTypeInstallments = existingInstallments.filter(
+      (inst) => {
+        if (installmentType === 'company_costing') {
+          return inst.installmentType === 'company_costing';
+        } else {
+          // For my_costing, include installments without type (backward compatibility)
+          return !inst.installmentType || inst.installmentType === 'my_costing';
+        }
+      }
+    );
+    const nextInstallmentNumber = sameTypeInstallments.length + 1;
+
+    console.log(`[addPlacementInstallment] Installment type: ${installmentType}, Existing same-type count: ${sameTypeInstallments.length}, Next number: ${nextInstallmentNumber}`);
 
     // Prepare payload for API
     const payload = {
@@ -756,6 +769,7 @@ export const StudentProvider = ({ children }) => {
       payment_location: installmentData.country || null,
       notes: installmentData.remarks || '',
       status: 'completed',
+      installment_type: installmentType,
     };
 
     // Create installment in Supabase
@@ -781,6 +795,7 @@ export const StudentProvider = ({ children }) => {
       status: created.status,
       installmentNumber: created.installment_number,
       paymentLocation: created.payment_location || installmentData.country || null,
+      installmentType: created.installment_type || installmentType, // Include the installment type
     };
 
     let placementStudentName = 'Unknown Student';
@@ -808,25 +823,39 @@ export const StudentProvider = ({ children }) => {
     });
 
     // Log audit event for placement payment
+    const auditAction = installmentType === 'company_costing' ? 'COMPANY_PAYMENT_DEBIT' : 'PLACEMENT_PAYMENT';
+    const student = students.find((s) => s.id === placement.studentId);
+    const studentName = student ? `${student.firstName} ${student.lastName}` : placementStudentName;
+    
+    const auditDetails = {
+      placementId,
+      studentId: placement.studentId,
+      studentName: studentName,
+      amount: newInstallment.amount,
+      paymentMethod: newInstallment.method,
+      bankMoneyReceived: newInstallment.bankMoneyReceived,
+      chequeNumber: newInstallment.chequeNumber || null,
+      paymentDate: newInstallment.date,
+      remarks: newInstallment.remarks,
+      installmentType: installmentType,
+      transactionType: installmentType === 'company_costing' ? 'debit' : 'credit',
+    };
+    
     logAuditEvent(
-      'PLACEMENT_PAYMENT',
+      auditAction,
       'PLACEMENT',
       placementId,
-      {
-        placementId,
-        studentId: placement.studentId,
-        amount: newInstallment.amount,
-        paymentMethod: newInstallment.method,
-        bankMoneyReceived: newInstallment.bankMoneyReceived,
-        chequeNumber: newInstallment.chequeNumber || null,
-        paymentDate: newInstallment.date,
-        remarks: newInstallment.remarks,
-      },
-      placementStudentName
+      auditDetails,
+      studentName
     );
 
     return newInstallment;
   }, [students, placements, logAuditEvent]);
+
+  const addCompanyPayment = useCallback(async (placementId, paymentData) => {
+    // Wrapper function to add a company payment (uses installment_type = 'company_costing')
+    return addPlacementInstallment(placementId, paymentData, 'company_costing');
+  }, [addPlacementInstallment]);
 
   const updatePlacementInstallment = useCallback(async (installmentId, installmentData) => {
     const payload = {
@@ -852,6 +881,7 @@ export const StudentProvider = ({ children }) => {
       status: updated.status,
       installmentNumber: updated.installment_number,
       paymentLocation: updated.payment_location || null,
+      installmentType: updated.installment_type || 'my_costing', // Preserve installment type
     };
 
     setPlacements((prev) =>
@@ -1235,6 +1265,7 @@ export const StudentProvider = ({ children }) => {
     placements,
     getPlacementsByBatch,
     addPlacementInstallment,
+    addCompanyPayment,
     updatePlacementInstallment,
     updatePlacementCosts,
     loadSupabaseData,

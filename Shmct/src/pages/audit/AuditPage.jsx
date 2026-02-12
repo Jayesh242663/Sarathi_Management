@@ -8,9 +8,13 @@ import {
   Printer,
   IndianRupee,
   TrendingUp,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Trash2,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
+import { AuditService } from '../../services/apiService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import './AuditPage.css';
 
@@ -23,9 +27,14 @@ const AuditPage = () => {
   const [sortOption, setSortOption] = useState('date-newest'); // date-newest, date-oldest, name-asc, name-desc
   const [highlightedId, setHighlightedId] = useState(null);
   const rowRefs = useRef({});
+  
+  // Selection state for bulk delete
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Filter audit log based on current filters - ONLY FINANCIAL RECORDS
-  const [showAllEntries, setShowAllEntries] = useState(true);
+  // Filter audit log based on current filters - Default to FINANCIAL RECORDS ONLY
+  const [showAllEntries, setShowAllEntries] = useState(false);
 
   // Handle navigation from receipt item with highlight
   useEffect(() => {
@@ -77,6 +86,7 @@ const AuditPage = () => {
       entry.entityType === 'PAYMENT' ||
       entry.action === 'PAYMENT' ||
       entry.action === 'PLACEMENT_PAYMENT' ||
+      entry.action === 'COMPANY_PAYMENT_DEBIT' ||
       entry.action === 'REFUND' ||
       entry.action === 'ADJUSTMENT' ||
       entry.action === 'SCHOLARSHIP' ||
@@ -102,7 +112,8 @@ const AuditPage = () => {
     const entries = sortedLog.map((entry, index) => {
       const isCredit = entry.action === 'PAYMENT' || entry.action === 'RECEIPT' || entry.action === 'PLACEMENT_PAYMENT';
       const isDebit = entry.action === 'REFUND' || entry.action === 'ADJUSTMENT' || 
-                      entry.action === 'SCHOLARSHIP' || entry.action === 'DISCOUNT';
+                      entry.action === 'SCHOLARSHIP' || entry.action === 'DISCOUNT' ||
+                      entry.action === 'COMPANY_PAYMENT_DEBIT';
       const amount = entry.amount || entry.details?.amount || 0;
       
       if (isCredit) {
@@ -278,6 +289,14 @@ const AuditPage = () => {
         const bank = entry.details?.bankMoneyReceived && bankShowMethods.includes(entry.details?.paymentMethod) ? ` [${bankAccounts[entry.details.bankMoneyReceived] || 'Bank Account'}]` : '';
         const remarks = entry.details?.remarks ? `Remark: ${entry.details.remarks}` : (entry.action === 'PLACEMENT_PAYMENT' ? 'Placement fee collection' : 'Fee collection');
         return `Being ${(entry.action === 'PLACEMENT_PAYMENT') ? 'placement fee' : 'fee'} collection received by ${method}${bank} - ${remarks}`;
+      case 'COMPANY_PAYMENT_DEBIT':
+        const companyMethod = paymentMethods[entry.details?.paymentMethod] || entry.details?.paymentMethod || 'N/A';
+        const companyBankShowMethods = ['upi', 'card', 'bank_transfer', 'cheque'];
+        const companyBank = entry.details?.bankMoneyReceived && companyBankShowMethods.includes(entry.details?.paymentMethod) ? ` [${bankAccounts[entry.details.bankMoneyReceived] || 'Bank Account'}]` : '';
+        const companyCheque = entry.details?.chequeNumber ? ` (Cheque #${entry.details.chequeNumber})` : '';
+        const companyRemarks = entry.details?.remarks ? `Remark: ${entry.details.remarks}` : 'Company placement payment';
+        const studentName = entry.details?.studentName || entry.entityName?.split(' - ')[0] || 'Student';
+        return `Being payment to company for ${studentName}'s placement via ${companyMethod}${companyBank}${companyCheque} - ${companyRemarks}`;
       case 'REFUND':
         return `Being refund processed - ${entry.details?.reason || 'Fee refund'} via ${paymentMethods[entry.details?.refundMethod] || 'Bank Transfer'}`;
       case 'SCHOLARSHIP':
@@ -304,6 +323,7 @@ const AuditPage = () => {
       case 'PAYMENT':
       case 'RECEIPT': return { label: 'Receipt', class: 'receipt' };
       case 'PLACEMENT_PAYMENT': return { label: 'Placement Receipt', class: 'placement-receipt' };
+      case 'COMPANY_PAYMENT_DEBIT': return { label: 'Company Payment', class: 'company-payment' };
       case 'REFUND': return { label: 'Refund', class: 'refund' };
       case 'SCHOLARSHIP': return { label: 'Scholarship', class: 'scholarship' };
       case 'ADJUSTMENT': return { label: 'Adjustment', class: 'adjustment' };
@@ -324,6 +344,44 @@ const AuditPage = () => {
     });
   };
 
+  // Selection handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(ledgerData.entries.map(entry => entry.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(selectedId => selectedId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    setIsDeleting(true);
+    try {
+      await AuditService.bulkDelete(selectedIds);
+      
+      // Refresh the audit log data
+      window.location.reload(); // Simple refresh, or you can update context
+      
+      setSelectedIds([]);
+      setShowDeleteModal(false);
+      alert(`Successfully deleted ${selectedIds.length} audit log entries`);
+    } catch (error) {
+      console.error('Failed to delete audit logs:', error);
+      alert(`Failed to delete audit logs: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="ledger-page">
       {/* Header - Match Placements header */}
@@ -335,6 +393,20 @@ const AuditPage = () => {
       </div>
 
       <div className="ledger-actions no-print" style={{ marginBottom: '1rem' }}>
+        {selectedIds.length > 0 && (
+          <button 
+            className="ledger-btn delete-btn" 
+            onClick={() => setShowDeleteModal(true)}
+            style={{ 
+              backgroundColor: '#dc3545', 
+              color: 'white',
+              marginRight: '0.5rem'
+            }}
+          >
+            <Trash2 size={16} />
+            Delete Selected ({selectedIds.length})
+          </button>
+        )}
         <button className="ledger-btn" onClick={handleExportCSV} disabled={ledgerData.entries.length === 0}>
           <Download size={16} />
           Export
@@ -468,6 +540,14 @@ const AuditPage = () => {
             <table className="ledger-table">
               <thead>
                 <tr>
+                  <th className="col-select no-print">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === ledgerData.entries.length && ledgerData.entries.length > 0}
+                      onChange={handleSelectAll}
+                      title="Select all"
+                    />
+                  </th>
                   <th className="col-serial">Sr.<br/>No.</th>
                   <th className="col-date">Date</th>
                   <th className="col-voucher">Voucher/<br/>Receipt No.</th>
@@ -485,14 +565,23 @@ const AuditPage = () => {
                 {ledgerData.entries.map((entry, index) => {
                   const txnType = getTransactionType(entry.action);
                   const isHighlighted = entry.id === highlightedId;
+                  const isSelected = selectedIds.includes(entry.id);
                   return (
                     <tr
                       key={entry.id}
                       ref={(el) => (rowRefs.current[entry.id] = el)}
                       className={`${index % 2 === 0 ? 'even-row' : 'odd-row'} ${
                         isHighlighted ? 'highlighted-row' : ''
-                      }`}
+                      } ${isSelected ? 'selected-row' : ''}`}
                     >
+                      <td className="col-select no-print">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectOne(entry.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
                       <td className="col-serial">{entry.serialNo}</td>
                       <td className="col-date">{formatLedgerDate(entry.timestamp)}</td>
                       <td className="col-voucher">
@@ -537,7 +626,9 @@ const AuditPage = () => {
                         </span>
                       </td>
                       <td className="col-debit">
-                        {entry.debit ? formatCurrency(entry.debit) : '-'}
+                        {entry.debit ? (
+                          <span className="debit-amount">{formatCurrency(entry.debit)}</span>
+                        ) : '-'}
                       </td>
                       <td className="col-credit">
                         {entry.credit ? (
@@ -553,9 +644,12 @@ const AuditPage = () => {
               </tbody>
               <tfoot>
                 <tr className="totals-row">
+                  <td className="no-print"></td>
                   <td colSpan="7" className="totals-label">Total</td>
                   <td className="col-debit total-cell">
-                    {ledgerData.totalDebits > 0 ? formatCurrency(ledgerData.totalDebits) : '-'}
+                    {ledgerData.totalDebits > 0 ? (
+                      <span className="debit-amount">{formatCurrency(ledgerData.totalDebits)}</span>
+                    ) : '-'}
                   </td>
                   <td className="col-credit total-cell">
                     <span className="credit-amount">{formatCurrency(ledgerData.totalCredits)}</span>
@@ -572,13 +666,22 @@ const AuditPage = () => {
               {ledgerData.entries.map((entry) => {
                 const txnType = getTransactionType(entry.action);
                 const isHighlighted = entry.id === highlightedId;
+                const isSelected = selectedIds.includes(entry.id);
                 return (
                   <div
                     key={entry.id}
                     ref={(el) => (rowRefs.current[entry.id] = el)}
-                    className={`ledger-card ${isHighlighted ? 'highlighted-card' : ''}`}
+                    className={`ledger-card ${isHighlighted ? 'highlighted-card' : ''} ${isSelected ? 'selected-card' : ''}`}
                   >
                     <div className="card-header">
+                      <div className="card-select no-print">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectOne(entry.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
                       <div className="card-serial">#{entry.serialNo}</div>
                       <div className="card-date">{formatLedgerDate(entry.timestamp)}</div>
                       <span className={`txn-type ${txnType.class}`}>{txnType.label}</span>
@@ -624,15 +727,21 @@ const AuditPage = () => {
                     )}
                     
                     <div className="card-amounts">
+                      {entry.debit && (
+                        <div className="amount-item debit">
+                          <span className="amount-label">Debit</span>
+                          <span className="amount-value debit-amount">{formatCurrency(entry.debit)}</span>
+                        </div>
+                      )}
                       {entry.credit && (
                         <div className="amount-item credit">
                           <span className="amount-label">Credit</span>
-                          <span className="amount-value">{formatCurrency(entry.credit)}</span>
+                          <span className="amount-value credit-amount">{formatCurrency(entry.credit)}</span>
                         </div>
                       )}
                       <div className="amount-item balance">
                         <span className="amount-label">Balance</span>
-                        <span className="amount-value">{formatCurrency(entry.balance)}</span>
+                        <span className="amount-value balance-amount">{formatCurrency(entry.balance)}</span>
                       </div>
                     </div>
                   </div>
@@ -645,6 +754,12 @@ const AuditPage = () => {
                   <strong>Closing Summary</strong>
                 </div>
                 <div className="card-amounts">
+                  {ledgerData.totalDebits > 0 && (
+                    <div className="amount-item">
+                      <span className="amount-label">Total Debit</span>
+                      <span className="amount-value debit-amount">{formatCurrency(ledgerData.totalDebits)}</span>
+                    </div>
+                  )}
                   <div className="amount-item">
                     <span className="amount-label">Total Credit</span>
                     <span className="amount-value credit-amount">{formatCurrency(ledgerData.totalCredits)}</span>
@@ -671,6 +786,44 @@ const AuditPage = () => {
           minute: '2-digit'
         })}</p>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Deletion</h3>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete <strong>{selectedIds.length}</strong> audit log {selectedIds.length === 1 ? 'entry' : 'entries'}?</p>
+              <p style={{ color: '#dc3545', marginTop: '0.5rem' }}>
+                ⚠️ This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-btn cancel-btn" 
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-btn delete-confirm-btn" 
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                style={{ 
+                  backgroundColor: '#dc3545', 
+                  color: 'white',
+                  opacity: isDeleting ? 0.6 : 1 
+                }}
+              >
+                {isDeleting ? 'Deleting...' : `Delete ${selectedIds.length} ${selectedIds.length === 1 ? 'Entry' : 'Entries'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,6 +6,8 @@ import { attachUserRole, restrictWriteToAdmin } from '../middleware/authorize.js
 import { parsePagination, formatPaginatedResponse, applyPagination } from '../utils/pagination.js';
 import { logger } from '../utils/logger.js';
 import { sanitizeDbError } from '../utils/sanitizeError.js';
+import { generateReceiptPDF } from '../services/pdfService.js';
+import { sendReceiptEmail } from '../services/emailService.js';
 
 const router = Router();
 
@@ -25,6 +27,100 @@ const paymentCreateSchema = z.object({
   chequeNumber: z.string().max(50).optional().nullable(),
   remarks: z.string().max(500).optional().nullable(),
   receiptNumber: z.string().max(100).optional().nullable(),
+});
+
+// POST /api/payments/email-receipt - Send receipt via email (test endpoint)
+// Define BEFORE global auth middleware so it doesn't require authentication
+router.post('/email-receipt', async (req, res, next) => {
+  try {
+    // Validation schema for email receipt request
+    const emailReceiptSchema = z.object({
+      recipientEmail: z.string().email('Invalid email address'),
+      receiptData: z.object({
+        receiptNumber: z.string().min(1, 'Receipt number is required'),
+        paymentDate: z.string().refine(
+          (date) => !isNaN(Date.parse(date)),
+          'Invalid payment date'
+        ),
+        studentName: z.string().min(1, 'Student name is required'),
+        courseName: z.string().min(1, 'Course name is required'),
+        paymentMethod: z.string().min(1, 'Payment method is required'),
+        amount: z.number().positive('Amount must be positive'),
+        totalFees: z.number().positive('Total fees must be positive'),
+        discount: z.number().min(0).optional(),
+        previouslyPaid: z.number().min(0).optional(),
+        bankAccount: z.string().optional(),
+        chequeNumber: z.string().optional(),
+        showWatermark: z.boolean().optional(),
+      }),
+    });
+
+    // Validate request body
+    const validationResult = emailReceiptSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationResult.error.errors,
+      });
+    }
+
+    const { recipientEmail, receiptData } = validationResult.data;
+
+    logger.info('[payments] Generating PDF for email', {
+      receiptNumber: receiptData.receiptNumber,
+      recipient: recipientEmail,
+    });
+
+    // Generate PDF
+    const pdfBuffer = await generateReceiptPDF(receiptData);
+
+    logger.info('[payments] Sending email', {
+      receiptNumber: receiptData.receiptNumber,
+      recipient: recipientEmail,
+      pdfSize: pdfBuffer.length,
+    });
+
+    // Send email
+    const emailResult = await sendReceiptEmail(recipientEmail, pdfBuffer, receiptData);
+
+    logger.info('[payments] Email sent successfully', {
+      receiptNumber: receiptData.receiptNumber,
+      messageId: emailResult.messageId,
+    });
+
+    res.json({
+      success: true,
+      message: 'Receipt sent successfully',
+      recipient: recipientEmail,
+      receiptNumber: receiptData.receiptNumber,
+    });
+  } catch (err) {
+    logger.error('[payments] Email receipt error', err);
+    
+    // Return user-friendly error message
+    if (err.message.includes('Email service is not configured')) {
+      return res.status(503).json({
+        error: 'Email service unavailable',
+        message: 'Email functionality is not configured. Please contact administrator.',
+      });
+    }
+    
+    if (err.message.includes('Failed to send email')) {
+      return res.status(500).json({
+        error: 'Email delivery failed',
+        message: 'Failed to send email. Please try again later.',
+      });
+    }
+    
+    if (err.message.includes('PDF generation failed')) {
+      return res.status(500).json({
+        error: 'PDF generation failed',
+        message: 'Failed to generate receipt PDF. Please try again.',
+      });
+    }
+    
+    next(err);
+  }
 });
 
 // Secure all payment routes

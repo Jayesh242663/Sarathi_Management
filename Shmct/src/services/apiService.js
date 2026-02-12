@@ -289,6 +289,37 @@ export const AuditService = {
     );
     if (!response.ok) throw new Error('Failed to fetch ledger');
     return response.json();
+  },
+
+  async bulkDelete(ids) {
+    const response = await fetch(
+      `${API_BASE}/audit-logs/bulk`,
+      {
+        method: 'DELETE',
+        headers: getHeaders(),
+        body: JSON.stringify({ ids })
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete audit logs');
+    }
+    return response.json();
+  },
+
+  async deleteSingle(id) {
+    const response = await fetch(
+      `${API_BASE}/audit-logs/${id}`,
+      {
+        method: 'DELETE',
+        headers: getHeaders()
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete audit log');
+    }
+    return response.json();
   }
 };
 

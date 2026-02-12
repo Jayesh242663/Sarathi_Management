@@ -1,5 +1,5 @@
 import { useMemo, useState, Fragment } from 'react';
-import { Briefcase, Globe2, IndianRupee, TrendingUp, ChevronDown, Plus, DollarSign, Calendar, CreditCard, MessageSquare, MapPin, Building2, X, Edit2, Save, Search, Filter } from 'lucide-react';
+import { Briefcase, Globe2, IndianRupee, TrendingUp, ChevronDown, Plus, DollarSign, Calendar, CreditCard, MessageSquare, MapPin, Building2, X, Edit2, Save, Search, Filter, Banknote } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDate, getInitials, formatNumberWithCommas } from '../../utils/formatters';
@@ -9,7 +9,7 @@ import { PlacementService } from '../../services/apiService';
 import './PlacementsPage.css';
 
 const PlacementsPage = () => {
-  const { getPlacementsByBatch, students, currentBatch, addPlacementInstallment, updatePlacementInstallment, updatePlacementCosts } = useStudents();
+  const { getPlacementsByBatch, students, currentBatch, addPlacementInstallment, addCompanyPayment, updatePlacementInstallment, updatePlacementCosts } = useStudents();
   const { canEdit } = useAuth();
   const placements = getPlacementsByBatch();
   const [expandedId, setExpandedId] = useState(null);
@@ -26,6 +26,7 @@ const PlacementsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('regular'); // 'regular' or 'company-payment'
 
   const formatPreview = (val) => {
     const raw = (val ?? '').toString().replace(/,/g, '').trim();
@@ -70,8 +71,20 @@ const PlacementsPage = () => {
   const placementsWithStudent = useMemo(() => {
     const allPlacements = placements.map((placement) => {
       const student = students.find((s) => s.id === placement.studentId);
-      const installmentsPaid = (placement.installments || []).reduce((sum, inst) => sum + (inst.amount || 0), 0);
+      
+      // Only count my_costing installments for totalPaid (not company payments)
+      const myCostingInstallments = (placement.installments || []).filter(
+        (inst) => !inst.installmentType || inst.installmentType === 'my_costing'
+      );
+      const companyCostingInstallments = (placement.installments || []).filter(
+        (inst) => inst.installmentType === 'company_costing'
+      );
+      
+      console.log(`[PlacementsPage] Placement ${student ? student.firstName : 'Unknown'}: ${myCostingInstallments.length} my_costing, ${companyCostingInstallments.length} company_costing`);
+      
+      const installmentsPaid = myCostingInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
       const totalPaid = installmentsPaid;
+      
       const myCosting = placement.myCosting || 0;
       const remainingAmount = Math.max(0, myCosting - totalPaid);
       const isPlaceholder = !placement.company || placement.companyCosting <= 1;
@@ -109,8 +122,47 @@ const PlacementsPage = () => {
     });
   }, [placements, students, searchQuery, countryFilter]);
 
+  // Filter installments by type based on view mode
+  const placementsWithFilteredInstallments = useMemo(() => {
+    console.log('[PlacementsPage] Filtering installments, viewMode:', viewMode);
+    return placementsWithStudent.map((placement) => {
+      const allInstallments = placement.installments || [];
+      console.log(`[PlacementsPage] Placement ${placement.studentName} has ${allInstallments.length} total installments:`, 
+        allInstallments.map(i => ({ id: i.id, type: i.installmentType, amount: i.amount }))
+      );
+      
+      if (viewMode === 'company-payment') {
+        // Only show company_costing installments
+        const filteredInstallments = allInstallments.filter(
+          (inst) => inst.installmentType === 'company_costing'
+        );
+        // Calculate company payment totals
+        const companyPaid = filteredInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+        const companyRemaining = (placement.companyCosting || 0) - companyPaid;
+        
+        console.log(`[PlacementsPage] Filtered to ${filteredInstallments.length} company_costing installments`);
+        return {
+          ...placement,
+          installments: filteredInstallments,
+          companyPaid,
+          companyRemaining,
+        };
+      } else {
+        // Only show my_costing installments (or installments without type for backward compatibility)
+        const filteredInstallments = allInstallments.filter(
+          (inst) => !inst.installmentType || inst.installmentType === 'my_costing'
+        );
+        console.log(`[PlacementsPage] Filtered to ${filteredInstallments.length} my_costing installments`);
+        return {
+          ...placement,
+          installments: filteredInstallments,
+        };
+      }
+    });
+  }, [placementsWithStudent, viewMode]);
+
   const totals = useMemo(() => {
-    const stats = placementsWithStudent.reduce(
+    const stats = placementsWithFilteredInstallments.reduce(
       (acc, placement) => {
         if (!placement.isPlaceholder) {
           acc.company += placement.companyCosting || 0;
@@ -127,7 +179,34 @@ const PlacementsPage = () => {
     stats.collectionPercentage = stats.my > 0 ? Math.round((stats.totalPaid / stats.my) * 100) : 0;
     
     return stats;
-  }, [placementsWithStudent]);
+  }, [placementsWithFilteredInstallments]);
+
+  // Filter for company payments - only students with company costing > 1
+  const companyPaymentPlacements = useMemo(() => {
+    return placementsWithFilteredInstallments.filter((placement) => {
+      return placement.companyCosting > 1; // Only include placements with company costing
+    });
+  }, [placementsWithFilteredInstallments]);
+
+  // Totals for company payments
+  const companyPaymentTotals = useMemo(() => {
+    const stats = companyPaymentPlacements.reduce(
+      (acc, placement) => {
+        if (!placement.isPlaceholder) {
+          acc.company += placement.companyCosting || 0;
+          acc.totalPaid += placement.companyPaid || 0; // Sum of company_costing installments
+          acc.remaining += placement.companyRemaining || 0; // Company costing minus company paid
+          acc.totalInstallments += (placement.installments || []).length;
+        }
+        return acc;
+      },
+      { company: 0, my: 0, remaining: 0, totalInstallments: 0, totalPaid: 0 }
+    );
+    
+    stats.collectionPercentage = stats.company > 0 ? Math.round((stats.totalPaid / stats.company) * 100) : 0;
+    
+    return stats;
+  }, [companyPaymentPlacements]);
 
   const currentBatchLabel = currentBatch === 'all' ? 'All Batches' : currentBatch;
 
@@ -195,10 +274,13 @@ const PlacementsPage = () => {
       return;
     }
 
-    console.log('Adding installment:', { placementId, currentForm, amountValue });
+    console.log('Adding installment:', { placementId, currentForm, amountValue, viewMode });
     
     try {
-      await addPlacementInstallment(placementId, {
+      // Use appropriate function based on view mode
+      const paymentFunc = viewMode === 'company-payment' ? addCompanyPayment : addPlacementInstallment;
+      
+      await paymentFunc(placementId, {
         amount: amountValue,
         date: currentForm.date || new Date().toISOString(),
         method: currentForm.method || 'cash',
@@ -366,44 +448,71 @@ const PlacementsPage = () => {
               : `Batch ${currentBatch} International Placements`}
           </p>
         </div>
+        
+        {/* View Mode Toggle */}
+        <div className="placements-view-toggle">
+          <div className={`toggle-slider ${viewMode === 'company-payment' ? 'slide-right' : 'slide-left'}`}></div>
+          <button
+            className={`toggle-btn ${viewMode === 'regular' ? 'active' : ''}`}
+            onClick={() => setViewMode('regular')}
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Placement</span>
+          </button>
+          <button
+            className={`toggle-btn ${viewMode === 'company-payment' ? 'active' : ''}`}
+            onClick={() => setViewMode('company-payment')}
+          >
+            <Banknote className="w-4 h-4" />
+            <span>Company</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Section */}
       <div className="placements-stats">
         <div className="stat-card">
-          <div className="stat-icon blue">
-            <Briefcase />
-          </div>
-          <div className="stat-info">
-            <p className="stat-label">Total Placements</p>
-            <p className="stat-value">{placementsWithStudent.length}</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon green">
-            <IndianRupee />
-          </div>
-          <div className="stat-info">
-            <p className="stat-label">Total Paid</p>
-            <p className="stat-value green">{formatCurrency(totals.totalPaid)}</p>
+          <div className="stat-content">
+            <div className="stat-icon blue">
+              <Briefcase />
+            </div>
+            <div>
+              <p className="stat-label">Total Placements</p>
+              <p className="stat-value">{viewMode === 'regular' ? placementsWithFilteredInstallments.length : companyPaymentPlacements.length}</p>
+            </div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon orange">
-            <TrendingUp />
-          </div>
-          <div className="stat-info">
-            <p className="stat-label">Total Remaining</p>
-            <p className="stat-value orange">{formatCurrency(totals.remaining)}</p>
+          <div className="stat-content">
+            <div className="stat-icon green">
+              <IndianRupee />
+            </div>
+            <div>
+              <p className="stat-label">Total Paid</p>
+              <p className="stat-value green">{formatCurrency(viewMode === 'regular' ? totals.totalPaid : companyPaymentTotals.totalPaid)}</p>
+            </div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon yellow">
-            <CreditCard />
+          <div className="stat-content">
+            <div className="stat-icon orange">
+              <TrendingUp />
+            </div>
+            <div>
+              <p className="stat-label">Total Remaining</p>
+              <p className="stat-value orange">{formatCurrency(viewMode === 'regular' ? totals.remaining : companyPaymentTotals.remaining)}</p>
+            </div>
           </div>
-          <div className="stat-info">
-            <p className="stat-label">Total Installments</p>
-            <p className="stat-value">{totals.totalInstallments}</p>
+        </div>
+        <div className="stat-card">
+          <div className="stat-content">
+            <div className="stat-icon yellow">
+              <CreditCard />
+            </div>
+            <div>
+              <p className="stat-label">Total Installments</p>
+              <p className="stat-value">{viewMode === 'regular' ? totals.totalInstallments : companyPaymentTotals.totalInstallments}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -516,7 +625,7 @@ const PlacementsPage = () => {
               </div>
               <div className="placements-results-count">
                 <span className="results-count-text">
-                  Showing <strong>{placementsWithStudent.length}</strong> of <strong>{placements.length}</strong> placements
+                  Showing <strong>{viewMode === 'regular' ? placementsWithFilteredInstallments.length : companyPaymentPlacements.length}</strong> of <strong>{placements.length}</strong> placements
                 </span>
               </div>
             </div>
@@ -530,22 +639,22 @@ const PlacementsPage = () => {
                 <th>Student</th>
                 <th>Country</th>
                 <th>Company Costing</th>
-                <th>My Costing</th>
+                {viewMode === 'regular' && <th>My Costing</th>}
                 <th>Paid / Remaining</th>
                 <th>Placement Date</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {placementsWithStudent.length === 0 ? (
+              {(viewMode === 'regular' ? placementsWithFilteredInstallments : companyPaymentPlacements).length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="empty-state">
+                  <td colSpan={viewMode === 'regular' ? 7 : 6} className="empty-state">
                     <p className="empty-text">No placements found for this batch.</p>
                     <p className="empty-subtext">Try selecting another batch to view its placements.</p>
                   </td>
                 </tr>
               ) : (
-                placementsWithStudent.map((placement) => (
+                (viewMode === 'regular' ? placementsWithFilteredInstallments : companyPaymentPlacements).map((placement) => (
                   <Fragment key={placement.id}>
                     <tr>
                     <td data-label="Student">
@@ -602,36 +711,50 @@ const PlacementsPage = () => {
                         )
                       )}
                     </td>
-                    <td data-label="My Costing" className="number">
-                      {editingCosts === placement.id ? (
-                        <input
-                          type="text"
-                          className="cost-input"
-                          value={costForm.myCosting}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/,/g, '');
-                            setCostForm({...costForm, myCosting: formatNumberWithCommas(value)});
-                          }}
-                          placeholder="My Cost"
-                        />
-                      ) : (
-                        placement.isPlaceholder ? (
-                          <span className="placeholder-text">Not set</span>
+                    {viewMode === 'regular' && (
+                      <td data-label="My Costing" className="number">
+                        {editingCosts === placement.id ? (
+                          <input
+                            type="text"
+                            className="cost-input"
+                            value={costForm.myCosting}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/,/g, '');
+                              setCostForm({...costForm, myCosting: formatNumberWithCommas(value)});
+                            }}
+                            placeholder="My Cost"
+                          />
                         ) : (
-                          formatCurrency(placement.myCosting || 0)
-                        )
-                      )}
-                    </td>
+                          placement.isPlaceholder ? (
+                            <span className="placeholder-text">Not set</span>
+                          ) : (
+                            formatCurrency(placement.myCosting || 0)
+                          )
+                        )}
+                      </td>
+                    )}
                     <td data-label="Paid / Remaining" className="number">
                       {placement.isPlaceholder ? (
                         <span className="placeholder-text">-</span>
                       ) : (
                         <div className="payment-status">
-                          <span className="paid-amount">{formatCurrency(placement.totalPaid)}</span>
-                          <span className="separator">/</span>
-                          <span className={`remaining-amount ${placement.remainingAmount > 0 ? 'pending' : 'complete'}`}>
-                            {formatCurrency(placement.remainingAmount)}
-                          </span>
+                          {viewMode === 'company-payment' ? (
+                            <>
+                              <span className="paid-amount">{formatCurrency(placement.companyPaid || 0)}</span>
+                              <span className="separator">/</span>
+                              <span className="remaining-amount pending">
+                                {formatCurrency(placement.companyRemaining || placement.companyCosting)}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="paid-amount">{formatCurrency(placement.totalPaid)}</span>
+                              <span className="separator">/</span>
+                              <span className={`remaining-amount ${placement.remainingAmount > 0 ? 'pending' : 'complete'}`}>
+                                {formatCurrency(placement.remainingAmount)}
+                              </span>
+                            </>
+                          )}
                         </div>
                       )}
                     </td>
@@ -650,7 +773,7 @@ const PlacementsPage = () => {
                         <div className="action-buttons">
                           {canEdit() && !placement.hasFirstInstallment && (
                             <button className="btn-add-first" onClick={() => toggleExpand(placement.id)} title="Add First Installment">
-                              <Plus size={16} /> First Payment
+                              <Plus size={16} /> {viewMode === 'company-payment' ? 'First Payment' : 'First Payment'}
                             </button>
                           )}
                           {canEdit() && placement.needsCostsSetup && (
@@ -663,9 +786,13 @@ const PlacementsPage = () => {
                               className={`installment-toggle ${expandedId === placement.id ? 'open' : ''}`}
                               onClick={() => toggleExpand(placement.id)}
                               aria-expanded={expandedId === placement.id}
-                              aria-label={`View installments for ${placement.studentName}`}
+                              aria-label={`View ${viewMode === 'company-payment' ? 'company payments' : 'installments'} for ${placement.studentName}`}
                             >
-                              <span className="installment-count">{placement.installments.length} installments</span>
+                              {viewMode === 'company-payment' ? (
+                                <span className="installment-count">{placement.installments.length} payments</span>
+                              ) : (
+                                <span className="installment-count">{placement.installments.length} installments</span>
+                              )}
                               <ChevronDown />
                             </button>
                           )}
@@ -675,142 +802,296 @@ const PlacementsPage = () => {
                   </tr>
                   {expandedId === placement.id && (
                     <tr className="installments-row">
-                      <td colSpan={7}>
+                      <td colSpan={viewMode === 'regular' ? 7 : 6}>
                         <div className="installments-card">
-                          <div className="installments-header">
-                            <p>{placement.studentName} · {placement.installments.length} installments</p>
-                          </div>
-                          <div className="installments-list">
-                            {placement.installments.length === 0 ? (
-                              <p className="installment-empty">No installments recorded</p>
-                            ) : (
-                              placement.installments.map((inst) => (
-                                <button
-                                  type="button"
-                                  className="installment-item actionable"
-                                  key={inst.id}
-                                  onClick={() => handleInstallmentClick(placement, inst)}
-                                >
-                                  <div>
-                                    <p className="installment-amount">{formatCurrency(inst.amount)}</p>
-                                    <p className="installment-date">{formatDate(inst.date)}</p>
-                                    {inst.remarks && <p className="installment-remarks">{inst.remarks}</p>}
-                                  </div>
-                                  <span className="installment-method">{formatMethod(inst.method)}</span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                          {canEdit() && (
-                            <div className="add-installment">
-                              <div className="add-installment-header">
-                                <Plus size={18} />
-                                <span>Add New Installment</span>
+                          {viewMode === 'company-payment' ? (
+                            <div className="company-payment-section">
+                              <div className="company-payment-header">
+                                <p>{placement.studentName}</p>
+                                <div className="company-costing-breakdown">
+                                  <span className="label">Company Costing:</span>
+                                  <span className="value">{formatCurrency(placement.companyCosting)}</span>
+                                  <span className="separator">·</span>
+                                  <span className="paid">Paid: {formatCurrency(placement.companyPaid || 0)}</span>
+                                  <span className="separator">·</span>
+                                  <span className="remaining">Remaining: {formatCurrency(placement.companyRemaining || placement.companyCosting)}</span>
+                                </div>
                               </div>
-                              <div className="add-installment-fields">
-                                <div className="form-group">
-                                  <div className="form-label-row">
-                                    <label className="form-label">
-                                      <DollarSign size={16} />
-                                      Amount *
-                                    </label>
-                                    {formatPreview(getForm(placement.id).amount) && (
-                                      <span className="amount-hint">{formatPreview(getForm(placement.id).amount)}</span>
-                                    )}
+                              
+                              {/* Show existing company payments */}
+                              {placement.installments.length > 0 && (
+                                <div className="installments-list">
+                                  <div className="installments-list-header">
+                                    <p>Company Payments ({placement.installments.length})</p>
                                   </div>
-                                  <input
-                                    type="text"
-                                    min="0"
-                                    placeholder=""
-                                    value={getForm(placement.id).amount}
-                                    onChange={(e) => {
-                                      updateForm(placement.id, 'amount', e.target.value);
-                                    }}
-                                  />
-                                </div>
-                                <div className="form-group">
-                                  <label className="form-label">
-                                    <Calendar size={16} />
-                                    Payment Date
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={getForm(placement.id).date}
-                                    onChange={(e) => updateForm(placement.id, 'date', e.target.value)}
-                                  />
-                                </div>
-                                <div className="form-group">
-                                  <label className="form-label">
-                                    <CreditCard size={16} />
-                                    Payment Method
-                                  </label>
-                                  <select
-                                    value={getForm(placement.id).method}
-                                    onChange={(e) => updateForm(placement.id, 'method', e.target.value)}
-                                  >
-                                    <option value="cash">Cash</option>
-                                    <option value="upi">UPI</option>
-                                    <option value="card">Card</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="cheque">Cheque</option>
-                                  </select>
-                                </div>
-                                {(getForm(placement.id).method === 'bank_transfer' || getForm(placement.id).method === 'upi' || getForm(placement.id).method === 'card' || getForm(placement.id).method === 'cheque') && (
-                                  <div className="form-group">
-                                    <label className="form-label">
-                                      <Building2 size={16} />
-                                      Bank Account
-                                    </label>
-                                    <select
-                                      value={getForm(placement.id).bankMoneyReceived}
-                                      onChange={(e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)}
-                                      className="bank-select"
+                                  {placement.installments.map((inst) => (
+                                    <button
+                                      type="button"
+                                      className="installment-item actionable"
+                                      key={inst.id}
+                                      onClick={() => handleInstallmentClick(placement, inst)}
                                     >
-                                      {PLACEMENT_BANKS.map((bank) => (
-                                        <option key={bank.value} value={bank.value}>
-                                          {bank.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
-                                {getForm(placement.id).method === 'cheque' && (
-                                  <div className="form-group">
-                                    <label className="form-label">
-                                      <MessageSquare size={16} />
-                                      Cheque Number
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder=""
-                                      value={getForm(placement.id).chequeNumber}
-                                      onChange={(e) => updateForm(placement.id, 'chequeNumber', e.target.value)}
-                                    />
-                                  </div>
-                                )}
-                                <div className="form-group full-width">
-                                  <label className="form-label">
-                                    <MessageSquare size={16} />
-                                    Remarks
-                                  </label>
-                                  <textarea
-                                    placeholder="Add any notes or remarks (optional)"
-                                    value={getForm(placement.id).remarks}
-                                    onChange={(e) => updateForm(placement.id, 'remarks', e.target.value)}
-                                    className="remarks-textarea"
-                                    rows="2"
-                                  />
+                                      <div>
+                                        <p className="installment-amount">{formatCurrency(inst.amount)}</p>
+                                        <p className="installment-date">{formatDate(inst.date)}</p>
+                                        {inst.remarks && <p className="installment-remarks">{inst.remarks}</p>}
+                                      </div>
+                                      <span className="installment-method">{formatMethod(inst.method)}</span>
+                                    </button>
+                                  ))}
                                 </div>
-                              </div>
-                              <button
-                                className="add-installment-btn"
-                                onClick={() => handleAddInstallment(placement.id)}
-                                aria-label={`Add installment for ${placement.studentName}`}
-                              >
-                                <Plus size={16} />
-                                Add installment
-                              </button>
+                              )}
+                              
+                              {canEdit() && (
+                                <div className="add-installment">
+                                  <div className="add-installment-header">
+                                    <Plus size={18} />
+                                    <span>Add Company Payment</span>
+                                  </div>
+                                  <div className="add-installment-fields">
+                                    <div className="form-group">
+                                      <div className="form-label-row">
+                                        <label className="form-label">
+                                          <DollarSign size={16} />
+                                          Amount *
+                                        </label>
+                                        {formatPreview(getForm(placement.id).amount) && (
+                                          <span className="amount-hint">{formatPreview(getForm(placement.id).amount)}</span>
+                                        )}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        min="0"
+                                        placeholder=""
+                                        value={getForm(placement.id).amount}
+                                        onChange={(e) => {
+                                          updateForm(placement.id, 'amount', e.target.value);
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label">
+                                        <Calendar size={16} />
+                                        Payment Date
+                                      </label>
+                                      <input
+                                        type="date"
+                                        value={getForm(placement.id).date}
+                                        onChange={(e) => updateForm(placement.id, 'date', e.target.value)}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label">
+                                        <CreditCard size={16} />
+                                        Payment Method
+                                      </label>
+                                      <select
+                                        value={getForm(placement.id).method}
+                                        onChange={(e) => updateForm(placement.id, 'method', e.target.value)}
+                                      >
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                        <option value="bank_transfer">Bank Transfer</option>
+                                        <option value="cheque">Cheque</option>
+                                      </select>
+                                    </div>
+                                    {(getForm(placement.id).method === 'bank_transfer' || getForm(placement.id).method === 'upi' || getForm(placement.id).method === 'card' || getForm(placement.id).method === 'cheque') && (
+                                      <div className="form-group">
+                                        <label className="form-label">
+                                          <Building2 size={16} />
+                                          Bank Account
+                                        </label>
+                                        <select
+                                          value={getForm(placement.id).bankMoneyReceived}
+                                          onChange={(e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)}
+                                          className="bank-select"
+                                        >
+                                          {PLACEMENT_BANKS.map((bank) => (
+                                            <option key={bank.value} value={bank.value}>
+                                              {bank.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    )}
+                                    {getForm(placement.id).method === 'cheque' && (
+                                      <div className="form-group">
+                                        <label className="form-label">
+                                          <MessageSquare size={16} />
+                                          Cheque Number
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder=""
+                                          value={getForm(placement.id).chequeNumber}
+                                          onChange={(e) => updateForm(placement.id, 'chequeNumber', e.target.value)}
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="form-group full-width">
+                                      <label className="form-label">
+                                        <MessageSquare size={16} />
+                                        Remarks
+                                      </label>
+                                      <textarea
+                                        placeholder="Add any notes or remarks (optional)"
+                                        value={getForm(placement.id).remarks}
+                                        onChange={(e) => updateForm(placement.id, 'remarks', e.target.value)}
+                                        className="remarks-textarea"
+                                        rows="2"
+                                      />
+                                    </div>
+                                  </div>
+                                  <button
+                                    className="add-installment-btn"
+                                    onClick={() => handleAddInstallment(placement.id)}
+                                    aria-label={`Add company payment for ${placement.studentName}`}
+                                  >
+                                    <Plus size={16} />
+                                    Add Company Payment
+                                  </button>
+                                </div>
+                              )}
                             </div>
+                          ) : (
+                            <>
+                              <div className="installments-header">
+                                <p>{placement.studentName} · {placement.installments.length} installments</p>
+                              </div>
+                              <div className="installments-list">
+                                {placement.installments.length === 0 ? (
+                                  <p className="installment-empty">No installments recorded</p>
+                                ) : (
+                                  placement.installments.map((inst) => (
+                                    <button
+                                      type="button"
+                                      className="installment-item actionable"
+                                      key={inst.id}
+                                      onClick={() => handleInstallmentClick(placement, inst)}
+                                    >
+                                      <div>
+                                        <p className="installment-amount">{formatCurrency(inst.amount)}</p>
+                                        <p className="installment-date">{formatDate(inst.date)}</p>
+                                        {inst.remarks && <p className="installment-remarks">{inst.remarks}</p>}
+                                      </div>
+                                      <span className="installment-method">{formatMethod(inst.method)}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                              {canEdit() && (
+                                <div className="add-installment">
+                                  <div className="add-installment-header">
+                                    <Plus size={18} />
+                                    <span>Add New Installment</span>
+                                  </div>
+                                  <div className="add-installment-fields">
+                                    <div className="form-group">
+                                      <div className="form-label-row">
+                                        <label className="form-label">
+                                          <DollarSign size={16} />
+                                          Amount *
+                                        </label>
+                                        {formatPreview(getForm(placement.id).amount) && (
+                                          <span className="amount-hint">{formatPreview(getForm(placement.id).amount)}</span>
+                                        )}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        min="0"
+                                        placeholder=""
+                                        value={getForm(placement.id).amount}
+                                        onChange={(e) => {
+                                          updateForm(placement.id, 'amount', e.target.value);
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label">
+                                        <Calendar size={16} />
+                                        Payment Date
+                                      </label>
+                                      <input
+                                        type="date"
+                                        value={getForm(placement.id).date}
+                                        onChange={(e) => updateForm(placement.id, 'date', e.target.value)}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label">
+                                        <CreditCard size={16} />
+                                        Payment Method
+                                      </label>
+                                      <select
+                                        value={getForm(placement.id).method}
+                                        onChange={(e) => updateForm(placement.id, 'method', e.target.value)}
+                                      >
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                        <option value="bank_transfer">Bank Transfer</option>
+                                        <option value="cheque">Cheque</option>
+                                      </select>
+                                    </div>
+                                    {(getForm(placement.id).method === 'bank_transfer' || getForm(placement.id).method === 'upi' || getForm(placement.id).method === 'card' || getForm(placement.id).method === 'cheque') && (
+                                      <div className="form-group">
+                                        <label className="form-label">
+                                          <Building2 size={16} />
+                                          Bank Account
+                                        </label>
+                                        <select
+                                          value={getForm(placement.id).bankMoneyReceived}
+                                          onChange={(e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)}
+                                          className="bank-select"
+                                        >
+                                          {PLACEMENT_BANKS.map((bank) => (
+                                            <option key={bank.value} value={bank.value}>
+                                              {bank.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    )}
+                                    {getForm(placement.id).method === 'cheque' && (
+                                      <div className="form-group">
+                                        <label className="form-label">
+                                          <MessageSquare size={16} />
+                                          Cheque Number
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder=""
+                                          value={getForm(placement.id).chequeNumber}
+                                          onChange={(e) => updateForm(placement.id, 'chequeNumber', e.target.value)}
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="form-group full-width">
+                                      <label className="form-label">
+                                        <MessageSquare size={16} />
+                                        Remarks
+                                      </label>
+                                      <textarea
+                                        placeholder="Add any notes or remarks (optional)"
+                                        value={getForm(placement.id).remarks}
+                                        onChange={(e) => updateForm(placement.id, 'remarks', e.target.value)}
+                                        className="remarks-textarea"
+                                        rows="2"
+                                      />
+                                    </div>
+                                  </div>
+                                  <button
+                                    className="add-installment-btn"
+                                    onClick={() => handleAddInstallment(placement.id)}
+                                    aria-label={`Add installment for ${placement.studentName}`}
+                                  >
+                                    <Plus size={16} />
+                                    Add Installment
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
@@ -824,13 +1105,13 @@ const PlacementsPage = () => {
         </div>
 
         <div className="placements-cards">
-          {placementsWithStudent.length === 0 ? (
+          {(viewMode === 'regular' ? placementsWithFilteredInstallments : companyPaymentPlacements).length === 0 ? (
             <div className="placement-card empty-card">
               <p className="empty-text">No placements found for this batch.</p>
               <p className="empty-subtext">Try selecting another batch to view its placements.</p>
             </div>
           ) : (
-            placementsWithStudent.map((placement) => (
+            (viewMode === 'regular' ? placementsWithFilteredInstallments : companyPaymentPlacements).map((placement) => (
               <div className="placement-card" key={placement.id}>
                 <div className="placement-card-header">
                   <div className="placement-card-student">
@@ -1127,11 +1408,15 @@ const PlacementsPage = () => {
           <div className="installment-detail-header">
             <div>
               <p className="installment-detail-title">{selectedInstallment.placement.studentName}</p>
-              <p className="installment-detail-subtitle">Installment details</p>
+              <p className="installment-detail-subtitle">
+                {selectedInstallment.installment.installmentType === 'company_costing' 
+                  ? 'Company Payment details' 
+                  : 'Installment details'}
+              </p>
             </div>
             <div className="installment-detail-actions">
               {canEdit() && editingInstallmentId !== selectedInstallment.installment.id && (
-                <button className="btn-save" onClick={startEditInstallment} title="Edit installment">
+                <button className="btn-save" onClick={startEditInstallment} title={selectedInstallment.installment.installmentType === 'company_costing' ? 'Edit company payment' : 'Edit installment'}>
                   <Edit2 size={16} />
                 </button>
               )}

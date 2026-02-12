@@ -15,13 +15,16 @@ import {
   TrendingUp,
   Clock,
   Building2,
-  Pencil
+  Pencil,
+  Eye
 } from 'lucide-react';
 import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDate, getRelativeTime, getInitials } from '../../utils/formatters';
 import { COURSES, STUDENT_STATUS, PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
 import PaymentForm from '../fees/PaymentForm';
+import ReceiptModal from '../../components/receipt/ReceiptModal';
+import { generateReceiptData } from '../../services/receiptService';
 import './StudentDetail.css';
 
 const StudentDetail = () => {
@@ -31,6 +34,8 @@ const StudentDetail = () => {
   const { canEdit } = useAuth();
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceiptData, setSelectedReceiptData] = useState(null);
   
   const student = getStudentById(id);
   const feesSummary = getStudentFeesSummary(id);
@@ -54,6 +59,12 @@ const StudentDetail = () => {
     if (feesSummary?.status === 'paid') return 'green';
     if (feesSummary?.status === 'partial') return 'yellow';
     return 'red';
+  };
+
+  const handlePreviewReceipt = (payment) => {
+    const receiptData = generateReceiptData(payment, student);
+    setSelectedReceiptData(receiptData);
+    setShowReceiptModal(true);
   };
 
   return (
@@ -167,6 +178,14 @@ const StudentDetail = () => {
                         <div className="payment-item-right">
                         <p className="payment-date">{formatDate(payment.paymentDate)}</p>
                         <p className="payment-time">{getRelativeTime(payment.createdAt)}</p>
+                        <div className="payment-item-actions">
+                          <button
+                            className="payment-preview-btn"
+                            onClick={() => handlePreviewReceipt(payment)}
+                            title="Preview receipt"
+                          >
+                            <Eye size={14} />
+                          </button>
                           {canEdit() && (
                             <button
                               className="payment-edit-btn"
@@ -179,6 +198,7 @@ const StudentDetail = () => {
                               <Pencil size={14} />
                             </button>
                           )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -273,6 +293,14 @@ const StudentDetail = () => {
           payment={editingPayment}
           studentData={student}
           onClose={() => setShowPaymentForm(false)}
+        />
+      )}
+
+      {/* Receipt Preview Modal */}
+      {showReceiptModal && selectedReceiptData && (
+        <ReceiptModal
+          receiptData={selectedReceiptData}
+          onClose={() => setShowReceiptModal(false)}
         />
       )}
     </div>
