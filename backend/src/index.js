@@ -6,8 +6,6 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
-import fs from 'fs';
-import path from 'path';
 
 import auth from './middleware/auth.js';
 import errorHandler from './middleware/error.js';
@@ -25,7 +23,7 @@ import placementsRouter from './routes/placements.js';
 import auditLogsRouter from './routes/audit-logs.js';
 
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3001;
 
 // CORS: restrict to configured origins - require explicit allowlist
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -68,7 +66,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   maxAge: 3600
 };
 app.use(cors(corsOptions));
@@ -78,19 +76,8 @@ if (process.env.NODE_ENV === 'development') {
   // Development: Log to console in a compact format
   app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
 } else {
-  // Production: Log to file with full details
-  const logDir = path.join(process.cwd(), 'logs');
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-  }
-
-  const accessLogStream = fs.createWriteStream(
-    path.join(logDir, 'access.log'),
-    { flags: 'a' }
-  );
-
-  const logFormat = ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" :response-time ms';
-  app.use(morgan(logFormat, { stream: accessLogStream }));
+  // Production: Log to stdout for GCP Cloud Logging
+  app.use(morgan(':method :url :status :res[content-length] ":referrer" ":user-agent" :response-time ms'));
 }
 
 // Security headers and gzip
@@ -254,7 +241,46 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-app.listen(port, () => {
+// Create HTTP server
+const server = app.listen(port, '0.0.0.0', () => {
   // eslint-disable-next-line no-console
-  console.log(`[server] Listening on http://localhost:${port}`);
+  console.log(`[server] Listening on http://0.0.0.0:${port}`);
+});
+
+// Graceful shutdown for container orchestration (Kubernetes, Cloud Run, etc.)
+const gracefulShutdown = () => {
+  // eslint-disable-next-line no-console
+  console.log('[server] Received shutdown signal, closing gracefully...');
+  
+  // Stop accepting new connections
+  server.close(() => {
+    // eslint-disable-next-line no-console
+    console.log('[server] HTTP server closed');
+    process.exit(0);
+  });
+  
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    // eslint-disable-next-line no-console
+    console.error('[server] Force shutdown after 30s timeout');
+    process.exit(1);
+  }, 30000);
+};
+
+// Handle container shutdown signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[server] Uncaught exception:', err);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  // eslint-disable-next-line no-console
+  console.error('[server] Unhandled rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
