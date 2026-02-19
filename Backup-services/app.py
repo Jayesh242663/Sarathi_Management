@@ -4,12 +4,15 @@ import tempfile
 import gzip
 import shutil
 import logging
-import argparse
-from datetime import datetime
-from urllib.parse import urlparse
+from datetime import datetime, timezone
 from google.cloud import storage
+from flask import Flask, jsonify
+from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
+
+# Load environment variables from .env if present
+load_dotenv()
 
 
 def _validate_env(db_url, bucket_name):
@@ -43,7 +46,8 @@ def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
 
     _validate_env(db_url, bucket_name)
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    # Use timezone-aware UTC datetime
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     base_name = f"backup-{timestamp}.sql"
     upload_name = base_name + (".gz" if compress else "")
 
@@ -53,9 +57,16 @@ def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
 
     try:
         logging.info("Running pg_dump")
+        # Allow overriding pg_dump executable path via env var (helpful on Windows)
+        pg_dump_cmd = os.environ.get("PG_DUMP_PATH", "pg_dump")
         # Use --dbname to accept a full DATABASE_URL/URI
-        cmd = ["pg_dump", "--dbname", db_url, "-f", tmp_sql.name]
-        subprocess.run(cmd, check=True)
+        cmd = [pg_dump_cmd, "--dbname", db_url, "-f", tmp_sql.name]
+        try:
+            subprocess.run(cmd, check=True)
+        except FileNotFoundError as fnf:
+            logging.error("pg_dump executable not found: %s", pg_dump_cmd)
+            logging.error("On Windows install PostgreSQL client or set PG_DUMP_PATH to the pg_dump executable path.")
+            raise RuntimeError(f"pg_dump not found: {pg_dump_cmd}") from fnf
 
         upload_path = tmp_sql.name
         if compress:
@@ -99,22 +110,51 @@ def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
                 logging.debug("Failed to remove temp gz file", exc_info=True)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Create a PostgreSQL backup and upload to GCS")
-    parser.add_argument("--db-url", help="Database URL (overrides DATABASE_URL env)")
-    parser.add_argument("--bucket", help="GCS bucket name (overrides BUCKET_NAME env)")
-    parser.add_argument("--prefix", help="Optional GCS prefix/path to store backups", default=None)
-    parser.add_argument("--no-compress", dest="compress", action="store_false", help="Do not gzip the dump")
+def _env_bool(name, default=True):
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    return str(v).lower() not in ("0", "false", "no", "n")
 
-    args = parser.parse_args()
+
+def main():
+    db_url = os.environ.get("DATABASE_URL")
+    bucket = os.environ.get("BUCKET_NAME")
+    prefix = os.environ.get("BACKUP_PREFIX")
+    compress = _env_bool("BACKUP_COMPRESS", True)
 
     try:
-        result = backup_db(db_url=args.db_url, bucket_name=args.bucket, backup_prefix=args.prefix, compress=args.compress)
-        logging.info("Backup successful: gs://%s/%s", result['bucket'], result['blob'])
+        result = backup_db(db_url=db_url, bucket_name=bucket, backup_prefix=prefix, compress=compress)
+        logging.info("Backup successful: gs://%s/%s", result["bucket"], result["blob"])
     except Exception as e:
         logging.error("Backup failed: %s", e)
         raise
 
 
+def create_app():
+    app = Flask(__name__)
+
+    @app.route("/", methods=["GET"])
+    def health():
+        return "ok", 200
+
+    @app.route("/backup", methods=["POST", "GET"])
+    def trigger_backup():
+        # Trigger a backup using environment variables only.
+        try:
+            result = backup_db()
+            return jsonify(result), 200
+        except Exception as e:
+            logging.exception("Backup failed via HTTP: %s", e)
+            return jsonify({"error": str(e)}), 500
+
+    return app
+
+
 if __name__ == "__main__":
-    main()
+    port_env = os.environ.get("PORT")
+    if port_env:
+        app = create_app()
+        app.run(host="0.0.0.0", port=int(port_env))
+    else:
+        main()
