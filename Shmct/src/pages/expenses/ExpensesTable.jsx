@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Edit, Trash2, Search, Filter, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { Edit, Trash2, Search, Filter, ChevronUp, ChevronDown, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { BANK_MONEY_RECEIVED } from '../../utils/constants';
 import './Expenses.css';
@@ -46,6 +46,8 @@ const ExpensesTable = ({ expenses, onEdit, onDelete, loading, isAuditor = false 
   const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+  const [maxPageButtons, setMaxPageButtons] = useState(7);
   const [showFilters, setShowFilters] = useState(false);
   
   // Additional filter states
@@ -251,6 +253,27 @@ const ExpensesTable = ({ expenses, onEdit, onDelete, loading, isAuditor = false 
 
   // Paginated expenses
   const totalPages = Math.ceil(sortedExpenses.length / itemsPerPage);
+  // Keep currentPage within bounds when data or page size changes
+  useEffect(() => {
+    if (totalPages === 0) {
+      setCurrentPage(1);
+    } else if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  // Responsive: adjust how many page buttons to show based on viewport width
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      if (w <= 480) setMaxPageButtons(3);
+      else if (w <= 768) setMaxPageButtons(5);
+      else setMaxPageButtons(7);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
   const paginatedExpenses = useMemo(() => {
     return sortedExpenses.slice(
       (currentPage - 1) * itemsPerPage,
@@ -265,6 +288,25 @@ const ExpensesTable = ({ expenses, onEdit, onDelete, loading, isAuditor = false 
       setSortField(field);
       setSortOrder('desc');
     }
+  };
+
+  // Compute visible page numbers with ellipses
+  const getVisiblePageNumbers = (total, current, maxButtons = 7) => {
+    if (total <= maxButtons) return Array.from({ length: total }, (_, i) => i + 1);
+
+    const pages = [];
+    const siblingCount = 1; // pages to show on each side of current
+    const left = Math.max(2, current - siblingCount);
+    const right = Math.min(total - 1, current + siblingCount);
+
+    pages.push(1);
+    if (left > 2) pages.push('left-ellipsis');
+
+    for (let p = left; p <= right; p++) pages.push(p);
+
+    if (right < total - 1) pages.push('right-ellipsis');
+    pages.push(total);
+    return pages;
   };
 
   const getSelfTransactionLabel = (value) => {
@@ -586,11 +628,9 @@ const ExpensesTable = ({ expenses, onEdit, onDelete, loading, isAuditor = false 
               }}
               className="expenses-filter-select"
             >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
+              {PAGE_SIZE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -727,28 +767,59 @@ const ExpensesTable = ({ expenses, onEdit, onDelete, loading, isAuditor = false 
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="pagination-btn"
+              className="pagination-btn minimalist"
+              aria-label="Previous page"
             >
-              Previous
+              <ChevronLeft className="w-4 h-4" />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`pagination-page-btn ${currentPage === page ? 'active' : ''}`}
-              >
-                {page}
-              </button>
-            ))}
+            {getVisiblePageNumbers(totalPages, currentPage, maxPageButtons).map((p, idx) => {
+              if (p === 'left-ellipsis' || p === 'right-ellipsis') {
+                return (
+                  <span key={`ellipses-${idx}`} className="pagination-ellipsis">•</span>
+                );
+              }
+              return (
+                <button
+                  key={p}
+                  onClick={() => setCurrentPage(p)}
+                  className={`pagination-page-btn minimalist ${currentPage === p ? 'active' : ''}`}
+                  aria-label={`Go to page ${p}`}
+                >
+                  {p}
+                </button>
+              );
+            })}
 
             <button
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="pagination-btn"
+              className="pagination-btn minimalist"
+              aria-label="Next page"
             >
-              Next
+              <ChevronRight className="w-4 h-4" />
             </button>
+
+            {/* Compact items-per-page selector */}
+            <div className="pagination-extra minimalist-extra">
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="pagination-select minimalist-select"
+                aria-label="Items per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+
+              <div className="pagination-current">
+                {currentPage} / {totalPages}
+              </div>
+            </div>
           </div>
         </div>
       )}

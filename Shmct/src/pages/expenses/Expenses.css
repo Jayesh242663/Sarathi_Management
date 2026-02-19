@@ -883,6 +883,112 @@
   color: white;
 }
 
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  color: rgba(255,255,255,0.6);
+  font-size: 1.125rem;
+}
+
+.pagination-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.pagination-label {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.6);
+}
+
+.pagination-select,
+.pagination-go-input {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+  font-size: 0.8125rem;
+}
+
+/* Minimalist adjustments */
+.pagination-btn.minimalist {
+  padding: 0.35rem;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.85);
+}
+
+.pagination-page-btn.minimalist {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.pagination-page-btn.minimalist:hover {
+  transform: translateY(-2px);
+}
+
+.pagination-page-btn.minimalist.active {
+  background: #22c55e;
+  color: #04260b;
+  border-color: transparent;
+}
+
+.minimalist-extra {
+  gap: 0.4rem;
+}
+
+.minimalist-select {
+  padding: 0.25rem 0.35rem;
+  min-width: 48px;
+  text-align: center;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.pagination-current {
+  font-size: 0.8125rem;
+  color: rgba(255,255,255,0.6);
+  padding-left: 0.5rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .expenses-pagination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .pagination-buttons {
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .pagination-page-btn.minimalist {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .pagination-extra.minimalist-extra {
+    justify-content: center;
+    margin-left: 0;
+  }
+}
+
 /* ============================================
    PROFESSIONAL EXPENSE FORM MODAL (WIDE)
    ============================================ */
