@@ -242,8 +242,12 @@ async function generateReceiptHTML(receiptData) {
 
       <!-- Receipt Number and Date -->
       <div class="receipt-info-row">
-        <div class="receipt-number">Receipt No. ${receiptData.receiptNumber}</div>
-        <div class="receipt-date">Date : ${formatReceiptDate(receiptData.paymentDate)}</div>
+        <div class="receipt-number" style="font-size: 14px; font-weight: 700; color: #000;">
+          Receipt No. ${receiptData.receiptNumber}
+        </div>
+        <div class="receipt-date" style="font-size: 14px; font-weight: 700;">
+          Date : ${formatReceiptDate(receiptData.paymentDate)}
+        </div>
       </div>
 
       <!-- Student Details: Name and Email on same line (remove phone) -->
@@ -478,7 +482,7 @@ function getEmbeddedCSS() {
     .receipt-contact { font-size: 11px; margin: 3px 0; }
     .receipt-title { text-align: center; font-size: 20px; font-weight: bold; margin: 15px 0; letter-spacing: 2px; }
     .receipt-info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd; }
-    .receipt-number, .receipt-date { font-size: 14px; font-weight: bold; color: #000 !important; }
+    .receipt-number, .receipt-date { font-size: 14px !important; font-weight: 700 !important; color: #000 !important; line-height: 1.4 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important; }
     .receipt-field { display: flex; margin-bottom: 10px; font-size: 14px; }
     .receipt-label { font-weight: bold; min-width: 150px; }
     .receipt-value { flex: 1; padding-left: 10px; }

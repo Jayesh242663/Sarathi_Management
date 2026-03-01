@@ -67,8 +67,12 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
 
         {/* Receipt Number and Date */}
         <div className="receipt-info-row">
-          <div className="receipt-number">Receipt No. {receiptData.receiptNumber}</div>
-          <div className="receipt-date">Date : {formatReceiptDate(receiptData.paymentDate)}</div>
+          <div className="receipt-number" style={{ fontSize: '14px', fontWeight: '700', color: '#000' }}>
+            Receipt No. {receiptData.receiptNumber}
+          </div>
+          <div className="receipt-date" style={{ fontSize: '14px', fontWeight: '700' }}>
+            Date : {formatReceiptDate(receiptData.paymentDate)}
+          </div>
         </div>
 
         {/* Student Details: name on left, email (Gmail: ...) aligned to the right */}

@@ -107,14 +107,18 @@
 }
 
 .receipt-number {
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 14px !important;
+  font-weight: 700 !important;
   color: #000 !important;
+  line-height: 1.4 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
 }
 
 .receipt-date {
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
 }
 
 /* Student Info */
