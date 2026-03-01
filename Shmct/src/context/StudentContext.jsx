@@ -59,6 +59,9 @@ const mapPayment = (payment) => ({
   receiptNumber: payment.receipt_number || '',
   createdAt: payment.created_at,
   status: payment.status,
+  // Email send tracking
+  emailSent: payment.email_sent || false,
+  emailSentAt: payment.email_sent_at || null,
   remarks: payment.notes || '',
 });
 
@@ -695,6 +698,11 @@ export const StudentProvider = ({ children }) => {
     return mappedPayment;
   }, [students, logAuditEvent]);
 
+  // Mark a payment as having its receipt emailed (local state helper)
+  const markPaymentEmailSent = useCallback((paymentId, emailSentAt = new Date().toISOString()) => {
+    setPayments((prev) => prev.map((p) => (p.id === paymentId ? { ...p, emailSent: true, emailSentAt } : p)));
+  }, []);
+
   // Placement installment operations
   const addPlacementInstallment = useCallback(async (placementId, installmentData, installmentType = 'my_costing') => {
     // Find the placement to get student_id
@@ -1201,6 +1209,7 @@ export const StudentProvider = ({ children }) => {
     getFilteredPayments,
     addPayment,
     updatePayment,
+    markPaymentEmailSent,
     getPaymentsByStudentId,
     addExpense,
     updateExpense,

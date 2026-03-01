@@ -151,14 +151,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* Catch-all redirect */}
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
           </Suspense>
-        </StudentProvider>
-      </AuthProvider>
+          </StudentProvider>
+        </AuthProvider>
     </Router>
   );
 }

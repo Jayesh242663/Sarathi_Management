@@ -453,6 +453,23 @@ svg.yellow {
   align-items: flex-end;
 }
 
+.payment-email-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  margin-bottom: 4px;
+}
+
+.email-sent {
+  color: #4ade80; /* green */
+}
+
+.email-not-sent {
+  color: rgba(255,255,255,0.35); /* muted */
+}
+
 .payment-item-actions {
   display: flex;
   align-items: center;

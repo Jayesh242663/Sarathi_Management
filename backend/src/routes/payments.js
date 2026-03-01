@@ -7,6 +7,7 @@ import { parsePagination, formatPaginatedResponse, applyPagination } from '../ut
 import { logger } from '../utils/logger.js';
 import { sanitizeDbError } from '../utils/sanitizeError.js';
 import { generateReceiptPDF } from '../services/pdfService.js';
+
 import { sendReceiptEmail } from '../services/emailService.js';
 
 const router = Router();
@@ -53,6 +54,8 @@ router.post('/email-receipt', async (req, res, next) => {
         chequeNumber: z.string().optional(),
         showWatermark: z.boolean().optional(),
       }),
+      // Optional: client-generated PDF as data URI or raw base64 string
+      pdfBase64: z.string().optional().nullable(),
     });
 
     // Validate request body
@@ -64,15 +67,28 @@ router.post('/email-receipt', async (req, res, next) => {
       });
     }
 
-    const { recipientEmail, receiptData } = validationResult.data;
+    const { recipientEmail, receiptData, pdfBase64 } = validationResult.data;
 
     logger.info('[payments] Generating PDF for email', {
       receiptNumber: receiptData.receiptNumber,
       recipient: recipientEmail,
     });
 
-    // Generate PDF
-    const pdfBuffer = await generateReceiptPDF(receiptData);
+    // Use client-provided PDF if available (data URI or raw base64), otherwise generate server-side
+    let pdfBuffer;
+    if (pdfBase64) {
+      // Strip data URI prefix if present
+      const base64 = pdfBase64.includes(',') ? pdfBase64.split(',')[1] : pdfBase64;
+      try {
+        pdfBuffer = Buffer.from(base64, 'base64');
+      } catch (err) {
+        logger.warn('[payments] Failed to decode pdfBase64, will regenerate server-side', { err: err.message });
+        pdfBuffer = await generateReceiptPDF(receiptData);
+      }
+    } else {
+      // Generate PDF server-side
+      pdfBuffer = await generateReceiptPDF(receiptData);
+    }
 
     logger.info('[payments] Sending email', {
       receiptNumber: receiptData.receiptNumber,
@@ -80,7 +96,7 @@ router.post('/email-receipt', async (req, res, next) => {
       pdfSize: pdfBuffer.length,
     });
 
-    // Send email
+    // Send email with PDF (signature is embedded in HTML)
     const emailResult = await sendReceiptEmail(recipientEmail, pdfBuffer, receiptData);
 
     logger.info('[payments] Email sent successfully', {
@@ -88,12 +104,49 @@ router.post('/email-receipt', async (req, res, next) => {
       messageId: emailResult.messageId,
     });
 
-    res.json({
-      success: true,
-      message: 'Receipt sent successfully',
-      recipient: recipientEmail,
-      receiptNumber: receiptData.receiptNumber,
-    });
+    // Attempt to mark payment as emailed in database if possible
+    try {
+      const sb = requireSupabase();
+      let updated = null;
+      if (req.body.paymentId) {
+        const { data: u, error: upErr } = await sb
+          .from('payments')
+          .update({ email_sent: true, email_sent_at: new Date().toISOString() })
+          .eq('id', req.body.paymentId)
+          .select()
+          .single();
+        if (!upErr) updated = u;
+        else logger.warn('[payments] Failed to update payment email status by id', { err: upErr.message });
+      } else if (receiptData.receiptNumber) {
+        const { data: u, error: upErr } = await sb
+          .from('payments')
+          .update({ email_sent: true, email_sent_at: new Date().toISOString() })
+          .eq('receipt_number', receiptData.receiptNumber)
+          .select()
+          .limit(1)
+          .single();
+        if (!upErr) updated = u;
+        else logger.warn('[payments] Failed to update payment email status by receipt', { err: upErr.message });
+      }
+
+      res.json({
+        success: true,
+        message: 'Receipt sent successfully',
+        recipient: recipientEmail,
+        receiptNumber: receiptData.receiptNumber,
+        paymentUpdated: !!updated,
+        emailSentAt: updated?.email_sent_at || new Date().toISOString(),
+        paymentId: updated?.id || req.body.paymentId || null,
+      });
+    } catch (upErr) {
+      logger.warn('[payments] Error while updating payment email status', upErr);
+      res.json({
+        success: true,
+        message: 'Receipt sent successfully',
+        recipient: recipientEmail,
+        receiptNumber: receiptData.receiptNumber,
+      });
+    }
   } catch (err) {
     logger.error('[payments] Email receipt error', err);
     
@@ -349,17 +402,21 @@ router.put('/:id', async (req, res, next) => {
 
     if (fetchError) throw fetchError;
 
+    // Build update payload preserving unspecified fields
+    const payload = {};
+    if (updateData.amount !== undefined) payload.amount = updateData.amount;
+    if (updateData.paymentDate !== undefined) payload.payment_date = updateData.paymentDate;
+    if (updateData.paymentMethod !== undefined) payload.payment_method = updateData.paymentMethod;
+    if (updateData.bankMoneyReceived !== undefined) payload.bank_account = updateData.bankMoneyReceived;
+    if (updateData.chequeNumber !== undefined) payload.cheque_number = updateData.chequeNumber || null;
+    if (updateData.remarks !== undefined) payload.notes = updateData.remarks;
+    if (updateData.status !== undefined) payload.status = updateData.status;
+    if (updateData.emailSent !== undefined) payload.email_sent = updateData.emailSent;
+    if (updateData.emailSentAt !== undefined) payload.email_sent_at = updateData.emailSentAt;
+
     const { data, error } = await sb
       .from('payments')
-      .update({
-        amount: updateData.amount,
-        payment_date: updateData.paymentDate,
-        payment_method: updateData.paymentMethod,
-        bank_account: updateData.bankMoneyReceived,
-        cheque_number: updateData.chequeNumber || null,
-        notes: updateData.remarks,
-        status: updateData.status,
-      })
+      .update(payload)
       .eq('id', id)
       .select()
       .single();

@@ -127,8 +127,13 @@ if (isProduction) {
 }
 
 app.use(compression());
+// Allow larger JSON and URL-encoded payloads for endpoints that may accept generated PDFs
 app.use(express.json({ 
-  limit: '1mb'  // Limit request body size to prevent DoS
+  limit: '20mb'  // Increased to allow client-generated PDF uploads
+}));
+app.use(express.urlencoded({
+  limit: '20mb',
+  extended: true,
 }));
 app.use(cookieParser());
 app.use(auth);

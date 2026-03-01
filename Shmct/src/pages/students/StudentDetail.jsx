@@ -62,7 +62,18 @@ const StudentDetail = () => {
   };
 
   const handlePreviewReceipt = (payment) => {
+    // Calculate previously paid amount by summing all payments made BEFORE this one
+    const sortedPayments = [...payments].sort((a, b) => 
+      new Date(a.payment_date || a.paymentDate) - new Date(b.payment_date || b.paymentDate)
+    );
+    const paymentIndex = sortedPayments.findIndex(p => p.id === payment.id);
+    const previouslyPaid = paymentIndex > 0 
+      ? sortedPayments.slice(0, paymentIndex).reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+      : 0;
+
     const receiptData = generateReceiptData(payment, student);
+    // Override previouslyPaid with calculated value from payment history
+    receiptData.previouslyPaid = previouslyPaid;
     setSelectedReceiptData(receiptData);
     setShowReceiptModal(true);
   };
@@ -179,6 +190,9 @@ const StudentDetail = () => {
                         <p className="payment-date">{formatDate(payment.paymentDate)}</p>
                         <p className="payment-time">{getRelativeTime(payment.createdAt)}</p>
                         <div className="payment-item-actions">
+                          <div className="payment-email-status" title={payment.emailSent ? `Receipt emailed on ${formatDate(payment.emailSentAt)}` : 'Receipt not emailed'}>
+                            <Mail size={14} className={payment.emailSent ? 'email-sent' : 'email-not-sent'} />
+                          </div>
                           <button
                             className="payment-preview-btn"
                             onClick={() => handlePreviewReceipt(payment)}
@@ -301,6 +315,7 @@ const StudentDetail = () => {
         <ReceiptModal
           receiptData={selectedReceiptData}
           onClose={() => setShowReceiptModal(false)}
+          studentEmail={student.email}
         />
       )}
     </div>

@@ -12,6 +12,8 @@ import {
 import './ReceiptTemplate.css';
 
 const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
+  const signatureUrl = import.meta.env.VITE_SIGNATURE_PATH || '/test_sign.png'; // Fallback to test_sign if env not set
+
   // Calculate all amounts
   const amounts = calculateReceiptAmounts({
     totalFees: receiptData.totalFees,
@@ -30,7 +32,7 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
   const amountInWords = numberToWords(amounts.receivedAmount);
 
   return (
-    <div className="receipt-container">
+    <div className={`receipt-container ${receiptData.paymentMethod === 'cheque' ? 'cheque-mode' : ''}`}>
       {showWatermark && <div className="receipt-watermark">COPY</div>}
       
       <div className="receipt-content">
@@ -44,8 +46,13 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
           />
           <div className="receipt-institution-info">
             <h1 className="receipt-institution-name">
-              {INSTITUTION_INFO.fullName}
+              {INSTITUTION_INFO.fullName}<sup>™</sup>
             </h1>
+            {amounts.previouslyPaid > 0 && (
+              <div className="receipt-total-fees-paid">
+                Total Fees Paid: {formatAmount(amounts.previouslyPaid + amounts.receivedAmount)}/-
+              </div>
+            )}
             <div className="receipt-approval">{INSTITUTION_INFO.approvalText}</div>
             <div className="receipt-address">{INSTITUTION_INFO.address}</div>
             <div className="receipt-contact">Phone : {INSTITUTION_INFO.phone}</div>
@@ -56,9 +63,7 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
         </div>
 
         {/* Receipt Title */}
-        <div className="receipt-title-box">
-          <h2 className="receipt-title">RECEIPT</h2>
-        </div>
+        <div className="receipt-title">RECEIPT</div>
 
         {/* Receipt Number and Date */}
         <div className="receipt-info-row">
@@ -66,53 +71,89 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
           <div className="receipt-date">Date : {formatReceiptDate(receiptData.paymentDate)}</div>
         </div>
 
-        {/* Student Name */}
-        <div className="receipt-field">
-          <span className="receipt-label">Student Name :</span>
-          <span className="receipt-value">{receiptData.studentName}</span>
+        {/* Student Details: name on left, email (Gmail: ...) aligned to the right */}
+        <div className="student-details-row">
+          <div className="student-detail full-name">
+            <span className="receipt-label">Student Name :</span>
+            <span className="receipt-value">{String(receiptData.studentName || '').toUpperCase()}</span>
+          </div>
+
+          <div className="student-detail student-email-right">
+            <span className="receipt-label">Gmail :</span>
+            <span className="receipt-value">
+              {receiptData.studentEmail || receiptData.email || <span className="muted">Email not available</span>}
+            </span>
+          </div>
         </div>
+
+        {/* Divider after student contact info */}
+        <div className="receipt-divider" />
 
         {/* Course Selection */}
         <div className="receipt-course-section">
           <div className="receipt-course-title">Course :</div>
           <div className="receipt-course-list">
-            {COURSE_OPTIONS_RECEIPT.map((course) => (
-              <div key={course.id} className="receipt-course-item">
-                <div className={`receipt-checkbox ${course.id === courseIndex ? 'checked' : ''}`}>
-                  {course.id === courseIndex && ''}
+            {COURSE_OPTIONS_RECEIPT.map((course) => {
+              const isSelected = course.id === courseIndex;
+              return (
+                <div key={course.id} className="receipt-course-item">
+                  <div className={`receipt-checkbox ${isSelected ? 'checked' : ''}`}>
+                    {isSelected ? '✓' : ''}
+                  </div>
+                  <span>{course.label}</span>
                 </div>
-                <span>{course.label}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
+
+        {/* Divider after course section */}
+        <div className="receipt-divider" />
 
         {/* Payment Mode */}
         <div className="receipt-payment-mode">
           <strong>Payment mode :</strong>
           <span className="receipt-payment-methods">
-            <span className={`receipt-payment-method ${receiptData.paymentMethod === 'upi' ? 'selected' : ''}`}>Gpay / Phonpay / PTM</span>
-            <span> / </span>
-            <span className={`receipt-payment-method ${receiptData.paymentMethod === 'cash' ? 'selected' : ''}`}>Cash</span>
-            <span> / </span>
-            <span className={`receipt-payment-method ${receiptData.paymentMethod === 'cheque' ? 'selected' : ''}`}>Cheque</span>
+            {receiptData.paymentMethod === 'upi' && <span className="receipt-payment-method selected">Gpay / Phonpay / PTM</span>}
+            {receiptData.paymentMethod === 'cash' && <span className="receipt-payment-method selected">Cash</span>}
+            {receiptData.paymentMethod === 'cheque' && <span className="receipt-payment-method selected">Cheque</span>}
           </span>
         </div>
 
         {/* Amount Details */}
         <div className="receipt-amounts">
-          {/* Outstanding Amount */}
-          <div className="receipt-amount-row">
-            <span className="receipt-amount-label">Outstanding Amount :</span>
-            <div className="receipt-amount-box">
-              {formatAmount(amounts.outstandingAmount)}/-
-            </div>
-            {amounts.discount > 0 && (
-              <span className="receipt-discount-note">
-                (₹{formatAmount(amounts.totalFees)} - Discount ₹{formatAmount(amounts.discount)})
-              </span>
-            )}
-          </div>
+          {/* Show Total Fees and Discount only on first payment */}
+          {amounts.previouslyPaid === 0 ? (
+            <>
+              {/* Total Fees */}
+              <div className="receipt-amount-row">
+                <span className="receipt-amount-label">Total Fees :</span>
+                <div className="receipt-amount-box">
+                  {formatAmount(amounts.totalFees)}/-
+                </div>
+              </div>
+
+              {/* Discount (if applicable) */}
+              {amounts.discount > 0 && (
+                <div className="receipt-amount-row">
+                  <span className="receipt-amount-label">Discount :</span>
+                  <div className="receipt-amount-box">
+                    {formatAmount(amounts.discount)}/-
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Show Fees Paid Until Now on subsequent payments */}
+              <div className="receipt-amount-row">
+                <span className="receipt-amount-label">Fees Paid Until Now :</span>
+                <div className="receipt-amount-box">
+                  {formatAmount(amounts.previouslyPaid)}/-
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Received Amount */}
           <div className="receipt-amount-row">
@@ -133,39 +174,35 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
 
         {/* Payment in Words */}
         <div className="receipt-amount-words">
-          <div className="receipt-amount-words-label">Payment Received in word :</div>
-          <div className="receipt-amount-words-value">{amountInWords}</div>
+          <strong>Payment Received in word : </strong>
+          <span className="receipt-amount-words-value">{amountInWords}</span>
         </div>
 
-        {/* Cheque Details */}
-        <div className="receipt-cheque-section">
-          <div className="receipt-cheque-row">
-            <div className="receipt-cheque-field">
-              <strong>Cheque No. :</strong>
-              <span>{receiptData.chequeNumber || '___________________'}</span>
+        {/* Cheque Details - Only show when payment method is cheque */}
+        {receiptData.paymentMethod === 'cheque' && (
+          <div className="receipt-cheque-section">
+            <div className="receipt-cheque-row">
+              <div className="receipt-cheque-field">
+                <strong>Cheque No. :</strong>
+                <span>{receiptData.chequeNumber || '___________________'}</span>
+              </div>
+              <div className="receipt-cheque-field">
+                <strong>Cheque Amount :</strong>
+                <span>{receiptData.chequeNumber ? formatAmount(amounts.receivedAmount) : '___________________'}</span>
+              </div>
             </div>
-            <div className="receipt-cheque-field">
-              <strong>Cheque Amount :</strong>
-              <span>{receiptData.chequeNumber ? formatAmount(amounts.receivedAmount) : '___________________'}</span>
-            </div>
-          </div>
-          <div className="receipt-cheque-row">
-            <div className="receipt-cheque-field">
-              <strong>Cheque Date :</strong>
-              <span>{receiptData.chequeNumber ? formatReceiptDate(receiptData.paymentDate) : '___________________'}</span>
-            </div>
-            <div className="receipt-cheque-field">
-              <strong>Bank Name :</strong>
-              <span>{receiptData.bankAccount || '___________________'}</span>
-            </div>
-          </div>
-          <div className="receipt-cheque-row">
-            <div className="receipt-cheque-field">
-              <strong>Transaction ID. :</strong>
-              <span>{'___________________'}</span>
+            <div className="receipt-cheque-row">
+              <div className="receipt-cheque-field">
+                <strong>Cheque Date :</strong>
+                <span>{receiptData.chequeNumber ? formatReceiptDate(receiptData.paymentDate) : '___________________'}</span>
+              </div>
+              <div className="receipt-cheque-field">
+                <strong>Bank Name :</strong>
+                <span>{receiptData.bankAccount || '___________________'}</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Footer */}
         <div className="receipt-footer">
@@ -184,6 +221,21 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
             <div className="receipt-institution-footer">
               {INSTITUTION_INFO.fullName}.
             </div>
+            {/* Digital Signature */}
+            <div className="receipt-signature-image">
+              {signatureUrl ? (
+                <img
+                  src={signatureUrl}
+                  alt="Authorized Signature"
+                  className="signature-image"
+                  onLoad={() => console.log('[ReceiptTemplate] Signature image loaded successfully')}
+                  onError={(e) => { 
+                    console.error('[ReceiptTemplate] Signature image failed to load, src was:', e.currentTarget.src);
+                    e.target.style.display = 'none'; 
+                  }}
+                />
+              ) : <div style={{color: '#999', fontSize: '12px'}}>Loading signature...</div>}
+            </div>
             <div className="receipt-signature-line">Authorised Signature</div>
           </div>
         </div>
@@ -197,6 +249,8 @@ ReceiptTemplate.propTypes = {
     receiptNumber: PropTypes.string.isRequired,
     paymentDate: PropTypes.string.isRequired,
     studentName: PropTypes.string.isRequired,
+    studentEmail: PropTypes.string,
+    studentPhone: PropTypes.string,
     courseName: PropTypes.string.isRequired,
     paymentMethod: PropTypes.string.isRequired,
     amount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,

@@ -1,9 +1,25 @@
-/* Receipt Template Styles */
+/* Receipt Template Styles for PDF Generation */
+@page { size: A4; margin: 10mm; }
+
+/* Global printing and layout safety */
+html, body { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+
+/* Neutralize auto-detected links/phones/emails in PDF renderers */
+a, a:link, a:visited, a[href] { color: inherit !important; text-decoration: none !important; cursor: default; }
+a[href^="tel"], a[href^="mailto"] { pointer-events: none; }
+
+body {
+  margin: 0;
+  padding: 0 0 120px 0; /* leave room for fixed footer in PDF */
+  font-family: Arial, sans-serif;
+}
+
 .receipt-container {
   background: white;
-  max-width: 920px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 12px;
   font-family: Arial, sans-serif;
   color: #000;
   position: relative;
@@ -25,6 +41,7 @@
 .receipt-content {
   position: relative;
   z-index: 1;
+  margin-bottom: 110px; /* ensure content doesn't overlap fixed footer */
 }
 
 /* Header Section */
@@ -37,10 +54,12 @@
   gap: 20px;
 }
 
-.receipt-logo {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
+.receipt-logo-placeholder {
+  width: 80px;
+  height: 80px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .receipt-institution-info {
@@ -118,10 +137,6 @@
 }
 
 /* Student Info */
-.receipt-student-info {
-  margin-bottom: 20px;
-}
-
 .receipt-field {
   display: flex;
   margin-bottom: 10px;
@@ -131,8 +146,7 @@
 /* Student details row: name and phone inline */
 .student-details-row {
   display: flex;
-  justify-content: space-between;
-  gap: 20px;
+  gap: 60px;
   align-items: center;
   margin-bottom: 10px;
 }
@@ -150,25 +164,9 @@
   padding-left: 6px;
 }
 
-/* Keep student name on a single line; truncate with ellipsis if too long */
-.student-detail.full-name .receipt-value {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-  max-width: 60%;
-}
-
 /* Align email block to the right */
 .student-detail.student-email {
   margin-left: auto;
-}
-
-.student-detail.student-email-right {
-  text-align: right;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .student-detail.student-email .receipt-label {
@@ -186,33 +184,6 @@
   }
 }
 
-/* Email shown inline beside the student name */
-.receipt-value-email {
-  font-size: 12px;
-  font-weight: 500;
-  color: #666;
-  text-transform: none;
-}
-
-/* For narrow screens, move email to next line for readability */
-@media (max-width: 640px) {
-  .receipt-value-email {
-    display: block;
-    margin-top: 4px;
-    color: #666;
-  }
-}
-
-/* Ensure Gmail label uses the same label styling but is smaller on compact widths */
-@media (max-width: 640px) {
-  .student-detail.student-email-right .receipt-label {
-    display: none;
-  }
-  .student-detail.student-email-right .receipt-value {
-    font-size: 13px;
-  }
-}
-
 .receipt-label {
   font-weight: bold;
   min-width: 150px;
@@ -223,16 +194,13 @@
   padding-left: 10px;
 }
 
+/* Improve layout stability for PDF rendering */
+.receipt-value, .receipt-amount-box, .receipt-cheque-field span { word-break: break-word; white-space: normal; }
+.receipt-container img, .receipt-content img { max-width: 100%; height: auto; }
+
 /* Course Selection */
 .receipt-course-section {
   margin: 20px 0;
-}
-
-/* Divider used to create visual breaks in the PDF */
-.receipt-divider {
-  border-top: 1px solid #ddd;
-  margin: 12px 0;
-  height: 0;
 }
 
 .receipt-course-title {
@@ -323,12 +291,6 @@
   font-weight: bold;
 }
 
-.receipt-discount-note {
-  font-size: 12px;
-  margin-left: 10px;
-  font-style: italic;
-}
-
 /* Payment in Words */
 .receipt-amount-words {
   margin: 20px 0;
@@ -350,6 +312,7 @@
   padding: 15px 0;
   border-top: 1px solid #000;
   border-bottom: 1px solid #000;
+  page-break-inside: avoid;
 }
 
 .receipt-cheque-row {
@@ -381,6 +344,15 @@
   margin-top: 30px;
   padding-top: 20px;
   border-top: 2px solid #000;
+  page-break-inside: avoid;
+  position: fixed;
+  left: 10mm;
+  right: 10mm;
+  bottom: 8mm;
+  width: calc(100% - 20mm);
+  background: #fff;
+  box-sizing: border-box;
+  padding: 12px 16px 10px 16px;
 }
 
 .receipt-terms {
@@ -415,27 +387,10 @@
   text-align: center;
 }
 
-/* Cheque mode: tighter spacing and smaller fonts for printable PDF */
-.cheque-mode { }
-.cheque-mode.receipt-container { max-width: 760px; padding: 12px; }
-.cheque-mode .receipt-logo { width: 88px; height: 88px; }
-.cheque-mode .receipt-institution-name { font-size: 16px; }
-.cheque-mode .receipt-title { font-size: 18px; }
-.cheque-mode .receipt-header { gap: 12px; padding-bottom: 6px; margin-bottom: 12px; }
-.cheque-mode .student-details-row { gap: 18px; }
-.cheque-mode .receipt-course-list { gap: 6px; }
-.cheque-mode .receipt-amount-row { gap: 8px; }
-.cheque-mode .receipt-amount-label { min-width: 140px; }
-.cheque-mode .receipt-amount-box { min-width: 150px; font-size: 14px; }
-.cheque-mode .receipt-cheque-row { gap: 12px; }
-.cheque-mode .receipt-footer { position: static; width: auto; padding: 8px 10px; box-sizing: border-box; }
-.cheque-mode .receipt-terms { font-size: 11px; }
-.cheque-mode .receipt-amount-words { font-size: 13px; }
-
 .receipt-institution-footer {
   font-weight: bold;
   font-size: 13px;
-  margin-bottom: 0; /* Remove padding under the footer */
+  margin-bottom: 10px;
 }
 
 .receipt-signature-line {
@@ -443,20 +398,6 @@
   padding-top: 5px;
   font-weight: bold;
   font-size: 12px;
-}
-
-/* Digital Signature Image */
-.receipt-signature-image {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.signature-image {
-  max-width: 100%;
-  max-height: 80px; /* Adjust height to fit the allocated area */
-  object-fit: contain;
 }
 
 /* Mobile Preview Styles */
@@ -471,9 +412,9 @@
     gap: 12px;
   }
 
-  .receipt-logo {
-    width: 72px;
-    height: 72px;
+  .receipt-logo-placeholder {
+    width: 64px;
+    height: 64px;
   }
 
   .receipt-institution-name {
@@ -531,38 +472,5 @@
 
   .receipt-watermark {
     font-size: 70px;
-  }
-}
-
-/* Print Styles */
-@media print {
-  @page {
-    margin: 0;
-    size: auto;
-  }
-
-  .receipt-container {
-    padding: 10px;
-    box-shadow: none;
-    max-width: 100%;
-  }
-
-  .receipt-watermark {
-    opacity: 0.5;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  body {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-    margin: 0;
-    padding: 0;
-  }
-
-  .receipt-amount-box {
-    background: white !important;
   }
 }

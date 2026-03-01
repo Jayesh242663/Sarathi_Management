@@ -81,12 +81,16 @@ export const numberToWords = (num) => {
  * @returns {Object} - Calculated amounts
  */
 export const calculateReceiptAmounts = (data) => {
-  const totalFees = parseFloat(data.totalFees || 0);
-  const discount = parseFloat(data.discount || 0);
-  const paidAmount = parseFloat(data.paidAmount || 0);
-  const currentPayment = parseFloat(data.currentPayment || 0);
+  // Ensure all values are properly converted to numbers
+  const totalFees = Number(data.totalFees) || 0;
+  const discount = Number(data.discount) || 0;
+  const paidAmount = Number(data.paidAmount) || 0;
+  const currentPayment = Number(data.currentPayment) || 0;
 
-  // Calculate net fees after discount
+  // Apply discount only on first payment (when paidAmount is 0) for display purposes
+  const applicableDiscount = paidAmount === 0 ? discount : 0;
+
+  // Calculate net fees after discount (always subtract discount from total)
   const netFees = totalFees - discount;
 
   // Calculate outstanding amount (before current payment)
@@ -95,12 +99,12 @@ export const calculateReceiptAmounts = (data) => {
   // Received amount is the current payment
   const receivedAmount = currentPayment;
 
-  // Calculate balance amount (after current payment)
+  // Calculate balance amount (after current payment) - always reflects discounted total
   const balanceAmount = outstandingAmount - receivedAmount;
 
   return {
     totalFees,
-    discount,
+    discount: applicableDiscount,
     netFees,
     previouslyPaid: paidAmount,
     outstandingAmount,
@@ -172,12 +176,14 @@ export const getPaymentMethodLabel = (method) => {
  * @returns {number} - Course index for checkbox (1-5)
  */
 export const getCourseCheckboxIndex = (courseName) => {
-  const courseMap = {
-    'BSC. in Hotel Management': 1,
-    'BSC in Hotel Management': 1,
-    'Diploma in Hotel Management': 2,
-    'International Diploma in Hotel Management': 3,
-  };
-  
-  return courseMap[courseName] || 5; // Default to "Other"
+  if (!courseName) return 5;
+
+  const normalized = String(courseName).toLowerCase();
+
+  if (normalized.includes('bsc') && normalized.includes('hotel')) return 1;
+  if (normalized.includes('international') && normalized.includes('diploma')) return 3;
+  if (normalized.includes('diploma') && normalized.includes('hotel')) return 2;
+  if (normalized.includes('certificate')) return 4;
+
+  return 5; // Default to "Others"
 };

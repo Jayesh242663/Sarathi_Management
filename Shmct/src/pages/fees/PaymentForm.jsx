@@ -130,9 +130,14 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
         return;
       }
       
-      // Calculate previously paid amount
+      // Calculate previously paid amount (sum of all existing payments for this student)
       const studentPayments = getFilteredPayments().filter(p => p.studentId === studentId);
-      const previouslyPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0) - cleanAmount;
+      let previouslyPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
+      
+      // If editing an existing payment, exclude the old amount and add the new amount
+      if (editingPayment) {
+        previouslyPaid = previouslyPaid - editingPayment.amount;
+      }
       
       // Generate receipt data
       const receipt = generateReceiptData(
@@ -220,7 +225,7 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
 
   // If showing receipt, render receipt modal
   if (showReceipt && receiptData) {
-    return <ReceiptModal receiptData={receiptData} onClose={handleReceiptClose} />;
+    return <ReceiptModal receiptData={receiptData} onClose={handleReceiptClose} studentEmail={studentData?.email} />;
   }
 
   // If showing error, render error modal
@@ -236,7 +241,7 @@ const PaymentForm = ({ studentId, studentName, remainingFees, onClose, payment, 
 
   // If showing receipt, render receipt modal
   if (showReceipt && receiptData) {
-    return <ReceiptModal receiptData={receiptData} onClose={handleReceiptClose} />;
+    return <ReceiptModal receiptData={receiptData} onClose={handleReceiptClose} studentEmail={studentData?.email} />;
   }
 
   return (

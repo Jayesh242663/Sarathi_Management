@@ -76,12 +76,11 @@ async function fetchWithRetry(url, options = {}) {
       ...options,
       credentials: 'include',  // CRITICAL: Always send httpOnly cookies
     });
-    
+
     // Handle 401 Unauthorized - httpOnly cookie expired
     if (response.status === 401) {
       await handleUnauthorized();
     }
-    
     return response;
   } catch (error) {
     throw error;
