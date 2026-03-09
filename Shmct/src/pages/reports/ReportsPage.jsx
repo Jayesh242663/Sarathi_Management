@@ -25,6 +25,7 @@ import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveC
 import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
+import { isStudentDroppedOut } from '../../utils/studentStatus';
 import { getResponsiveChartConfig, formatChartLabel, getDynamicYAxisDomain, getAxisConfig, formatMonthShort, getDynamicXAxisConfig, getDynamicCountDomain } from '../../utils/chartHelpers';
 import './ReportsPage.css';
 
@@ -340,9 +341,10 @@ const ReportsPage = () => {
         };
       }
       // Only count active students in total fees (exclude dropped-out)
-      if (student.status !== 'dropped') {
-        courseData[courseName].totalFees += (student.totalFees || 0);
-        courseData[courseName].pending += Math.max(0, (student.totalFees || 0) - collected);
+      if (!isStudentDroppedOut(student.status)) {
+        const netFees = Math.max(0, (student.totalFees || 0) - (student.discount || 0));
+        courseData[courseName].totalFees += netFees;
+        courseData[courseName].pending += Math.max(0, netFees - collected);
       }
       // Collected includes payments from all students (including dropped-out)
       courseData[courseName].collected += collected;
@@ -548,13 +550,13 @@ const ReportsPage = () => {
             </thead>
             <tbody>
               {courseWiseCollection.map((course) => {
-                const pending = course.total - course.collected;
-                const percentage = course.total > 0 ? Math.round((course.collected / course.total) * 100) : 0;
+                const pending = course.pending;
+                const percentage = course.totalFees > 0 ? Math.round((course.collected / course.totalFees) * 100) : 0;
                 return (
                   <tr key={course.name}>
                     <td className="left reports-course-name">{course.name}</td>
                     <td className="center reports-students-count">{course.students}</td>
-                    <td className="right reports-total-fees">{formatCurrency(course.total)}</td>
+                    <td className="right reports-total-fees">{formatCurrency(course.totalFees)}</td>
                     <td className="right reports-collected">{formatCurrency(course.collected)}</td>
                     <td className="right reports-pending">{formatCurrency(pending)}</td>
                     <td className="right">

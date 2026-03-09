@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { X, Download, Mail as MailIcon } from 'lucide-react';
+import { Download, Mail as MailIcon } from 'lucide-react';
 import ReceiptTemplate from './ReceiptTemplate';
 import { downloadReceiptPDF, emailReceipt } from '../../services/receiptService';
 import { useStudents } from '../../context/StudentContext';
+import { useAuth } from '../../context/AuthContext';
 import '../receipt/ReceiptTemplate.css';
 import '../receipt/ReceiptModal.css';
+
+/** Fixed receipt width — A4 at 96 DPI (210 mm ÷ 25.4 × 96 ≈ 794 px) */
+const RECEIPT_FIXED_W = 794;
 
 const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -14,6 +18,52 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
   const [showWatermark, setShowWatermark] = useState(false);
   const [emailAddress, setEmailAddress] = useState(studentEmail || '');
   const [emailError, setEmailError] = useState('');
+
+  const { user } = useAuth();
+  const isAuditor = user?.role === 'auditor';
+
+  // ── Chrome PDF-viewer style scaling ──────────────────────────
+  // The entire receipt is always visible, centred, never scrollable.
+  const receiptLeftRef = useRef(null);
+  const receiptInnerRef = useRef(null);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [receiptNaturalH, setReceiptNaturalH] = useState(1122); // A4 default
+
+  useEffect(() => {
+    const computeScale = () => {
+      const outer = receiptLeftRef.current;
+      const inner = receiptInnerRef.current;
+      if (!outer || !inner) return;
+
+      // Available space (entire preview area, no controls to subtract)
+      const padX = 48;
+      const padY = 48;
+      const availableW = outer.clientWidth - padX;
+      const availableH = outer.clientHeight - padY;
+      if (availableW <= 0 || availableH <= 0) return;
+
+      const naturalW = RECEIPT_FIXED_W;
+      const naturalH = inner.scrollHeight || 1122;
+
+      const scaleW = availableW / naturalW;
+      const scaleH = availableH / naturalH;
+      const s = Math.min(scaleW, scaleH, 1);
+
+      setPreviewScale(s);
+      setReceiptNaturalH(naturalH);
+    };
+
+    let timer = setTimeout(() => {
+      requestAnimationFrame(() => requestAnimationFrame(computeScale));
+    }, 30);
+
+    const ro = new ResizeObserver(() => requestAnimationFrame(computeScale));
+    if (receiptLeftRef.current) ro.observe(receiptLeftRef.current);
+    if (receiptInnerRef.current) ro.observe(receiptInnerRef.current);
+
+    return () => { clearTimeout(timer); ro.disconnect(); };
+  }, [receiptData, showWatermark]);
+  // ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     setEmailAddress(studentEmail || '');
@@ -64,78 +114,103 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
   return (
     <div className="receipt-modal-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="receipt-modal-header no-print">
-          <h3 className="receipt-modal-title">Payment Receipt</h3>
-          <button className="btn btn-icon receipt-close-icon" onClick={onClose} title="Close">
-            <X size={16} />
-          </button>
-        </div>
-
         <div className="receipt-modal-body">
-          {/* Left: Preview */}
-          <div className="receipt-left">
-            <div className="receipt-preview-controls">
-              <label className="receipt-watermark-toggle">
-                <input
-                  type="checkbox"
-                  checked={showWatermark}
-                  onChange={(e) => setShowWatermark(e.target.checked)}
-                />
-                <span>Show Watermark</span>
-              </label>
-            </div>
-            <div className="receipt-left-inner">
-              <ReceiptTemplate receiptData={receiptData} showWatermark={showWatermark} />
+          {/* Left: Preview area — page on dark background, Chrome PDF viewer style */}
+          <div className="receipt-left" ref={receiptLeftRef}>
+            <div className="receipt-scale-frame">
+              {/* Sizing wrapper — its width/height reflect the visual (scaled) size
+                  so the flex container can centre it properly. */}
+              <div
+                className="receipt-scale-wrapper"
+                style={{
+                  width: Math.ceil(RECEIPT_FIXED_W * previewScale),
+                  height: Math.ceil(receiptNaturalH * previewScale),
+                }}
+              >
+                <div
+                  className="receipt-left-inner"
+                  ref={receiptInnerRef}
+                  style={{
+                    width: RECEIPT_FIXED_W,
+                    transform: `scale(${previewScale})`,
+                    transformOrigin: 'top left',
+                  }}
+                >
+                  <ReceiptTemplate receiptData={receiptData} showWatermark={showWatermark} />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right: Actions */}
-          <aside className="receipt-right">
-            <div className="receipt-actions-header">
-              <h4>Actions</h4>
-              <p className="muted">Download or send this receipt</p>
+          {/* Right: Chrome-style sidebar */}
+          <aside className="receipt-sidebar">
+            <div className="sidebar-header">
+              <h2 className="sidebar-title">Receipt</h2>
+              <span className="sidebar-page-count">{receiptData.receiptNumber} &middot; 1 page</span>
             </div>
 
-            <div className="receipt-actions">
-              <button
-                className="btn btn-primary action-btn"
-                onClick={handleDownload}
-                disabled={isDownloading}
-                title="Download as PDF"
-              >
-                <Download size={16} />
-                <span>{isDownloading ? 'Downloading...' : 'Download PDF'}</span>
-              </button>
-
-              {/* Print removed per request */}
-
-              <div className="recipient-block">
-                <label className="recipient-label">Send to</label>
-                <div className="recipient-email">
-                  <input
-                    type="email"
-                    className="recipient-input"
-                    value={emailAddress}
-                    onChange={(e) => setEmailAddress(e.target.value)}
-                    placeholder="recipient@example.com"
-                    disabled={isEmailing || emailSent}
-                  />
-                  {emailError && <div className="recipient-error">{emailError}</div>}
+            <div className="sidebar-scroll">
+              <div className="sidebar-section">
+                <span className="sidebar-label">Destination</span>
+                <div className="sidebar-control">
+                  <div className="sidebar-select-display">
+                    <span className="sidebar-select-icon"><Download size={14} /></span>
+                    Save as PDF
+                  </div>
                 </div>
               </div>
 
-              <button
-                className="btn btn-accent action-btn"
-                onClick={handleSendEmail}
-                disabled={!emailAddress || isEmailing || emailSent}
-                title={emailAddress ? 'Send receipt by email' : 'Email not available'}
-              >
-                <MailIcon size={16} />
-                <span>{isEmailing ? 'Sending...' : emailSent ? 'Sent' : 'Send Email'}</span>
-              </button>
+              <div className="sidebar-section">
+                <div className="sidebar-control sidebar-control-full">
+                  <label className="sidebar-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={showWatermark}
+                      onChange={(e) => setShowWatermark(e.target.checked)}
+                    />
+                    <span>Show watermark</span>
+                  </label>
+                </div>
+              </div>
 
-              <button className="btn btn-ghost action-btn close-action" onClick={onClose} title="Close preview">
-                Close Preview
+              {!isAuditor && (
+                <div className="sidebar-section sidebar-section-stacked">
+                  <span className="sidebar-label">Send to</span>
+                  <div className="sidebar-control sidebar-control-full">
+                    <input
+                      type="email"
+                      className="sidebar-input"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                      placeholder="recipient@example.com"
+                      disabled={isEmailing || emailSent}
+                    />
+                    {emailError && <div className="sidebar-error">{emailError}</div>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="sidebar-button-strip">
+              <button
+                className="sidebar-btn sidebar-btn-action"
+                onClick={handleDownload}
+                disabled={isDownloading}
+              >
+                {isDownloading ? 'Saving…' : 'Save'}
+              </button>
+              {!isAuditor && (
+                <button
+                  className="sidebar-btn sidebar-btn-accent"
+                  onClick={handleSendEmail}
+                  disabled={!emailAddress || isEmailing || emailSent}
+                >
+                  <MailIcon size={14} />
+                  <span>{isEmailing ? 'Sending…' : emailSent ? 'Sent ✓' : 'Email'}</span>
+                </button>
+              )}
+              <button className="sidebar-btn sidebar-btn-cancel" onClick={onClose}>
+                Cancel
               </button>
             </div>
           </aside>

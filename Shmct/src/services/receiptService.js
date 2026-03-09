@@ -34,70 +34,106 @@ const waitForReceiptImages = async (rootElement, timeoutMs = 3000) => {
 };
 
 /**
- * Generate and download PDF receipt from HTML element
+ * Generate and download PDF receipt from HTML element.
+ *
+ * The receipt DOM may be displayed inside a scaled modal preview, so we clone
+ * it into an off-screen container at a fixed A4 width (794 px ≈ 210 mm @ 96 DPI),
+ * let it lay out naturally, capture that clone, and fit it onto one A4 page.
+ * This guarantees the PDF always renders at full size regardless of the preview.
+ *
  * @param {string} receiptNumber - Receipt number for filename
  * @param {string} studentName - Student name for filename
  * @returns {Promise<void>}
  */
+const A4_WIDTH_PX = 794;   // 210 mm at 96 DPI
+const A4_MM_W     = 210;
+const A4_MM_H     = 297;
+
 export const downloadReceiptPDF = async (receiptNumber, studentName) => {
+  let offscreen = null;
+
   try {
-    // Get the receipt container element
+    // ── 1. Find the live receipt element ──────────────────────────────
     const receiptElement = document.querySelector('.receipt-container');
-    
-    if (!receiptElement) {
-      throw new Error('Receipt element not found');
-    }
+    if (!receiptElement) throw new Error('Receipt element not found');
 
-    // Hide any no-print elements temporarily
-    const noPrintElements = receiptElement.querySelectorAll('.no-print');
-    noPrintElements.forEach(el => {
-      el.style.display = 'none';
-    });
+    // ── 2. Clone it into an off-screen wrapper at a fixed A4 width ───
+    offscreen = document.createElement('div');
+    offscreen.style.cssText = [
+      'position:fixed',
+      'left:-9999px',
+      'top:0',
+      `width:${A4_WIDTH_PX}px`,
+      'background:#fff',
+      'z-index:-1',
+      'overflow:visible',
+      'pointer-events:none',
+    ].join(';');
 
-    await waitForReceiptImages(receiptElement);
+    const clone = receiptElement.cloneNode(true);
+    // Remove any inline width/transform the preview may have set
+    clone.style.transform = 'none';
+    clone.style.transformOrigin = '';
+    clone.style.width = '100%';
+    clone.style.maxWidth = '100%';
 
-    // Convert HTML to canvas
-    const canvas = await html2canvas(receiptElement, {
-      scale: 2, // Higher quality
-      useCORS: true, // Allow loading images from other domains
+    // Remove no-print elements from the clone
+    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+    offscreen.appendChild(clone);
+    document.body.appendChild(offscreen);
+
+    // Wait for images inside the clone to finish loading
+    await waitForReceiptImages(clone);
+
+    // Small paint delay so the browser lays out the clone
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    // ── 3. Capture the clone at 2× resolution ───────────────────────
+    const canvas = await html2canvas(clone, {
+      scale: 2,
+      useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
+      width: A4_WIDTH_PX,
+      windowWidth: A4_WIDTH_PX,
     });
 
-    // Restore no-print elements
-    noPrintElements.forEach(el => {
-      el.style.display = '';
-    });
+    // ── 4. Build the PDF ─────────────────────────────────────────────
+    // Map the captured pixels to A4 mm, then scale to fit one page.
+    let imgW = A4_MM_W;
+    let imgH = (canvas.height * A4_MM_W) / canvas.width;
+    let x = 0;
+    let y = 0;
 
-    // Calculate dimensions for A4 size
-    const imgWidth = 210; // A4 width in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    // If taller than A4, scale the whole image down to fit one page
+    if (imgH > A4_MM_H) {
+      const ratio = A4_MM_H / imgH;
+      imgW *= ratio;
+      imgH  = A4_MM_H;
+      x = (A4_MM_W - imgW) / 2; // centre horizontally
+    }
 
-    // Create PDF
-    const pdf = new jsPDF({
-      orientation: imgHeight > imgWidth ? 'portrait' : 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
-    // Add image to PDF (download) - use JPEG for smaller file size while keeping good quality
-    const imgData = canvas.toDataURL('image/jpeg', 0.9);
-    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+    // Use PNG — lossless, crisp text on receipts
+    const imgData = canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', x, y, imgW, imgH);
 
-    // Signature is embedded in HTML (via DOM)
-
-    // Generate filename (include timestamp to avoid stale cached files)
-    const sanitizedStudentName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `Receipt_${receiptNumber}_${sanitizedStudentName}_${timestamp}.pdf`;
-
-    // Download PDF
-    pdf.save(filename);
+    // ── 5. Download ──────────────────────────────────────────────────
+    const safeName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    pdf.save(`Receipt_${receiptNumber}_${safeName}_${ts}.pdf`);
 
     return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
+  } finally {
+    // Always clean up the off-screen clone
+    if (offscreen && offscreen.parentNode) {
+      offscreen.parentNode.removeChild(offscreen);
+    }
   }
 };
 
@@ -178,38 +214,10 @@ export const emailReceipt = async (email, receiptData) => {
     // Get API base URL from environment or use default
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-    // Generate PDF client-side with captured HTML elements
-    const receiptElement = document.querySelector('.receipt-container');
-    if (!receiptElement) throw new Error('Receipt element not found for email generation');
+    // Let the backend generate a crisp vector PDF with PDFKit instead of
+    // sending a rasterised client-side capture.
 
-    // Hide any no-print elements temporarily
-    const noPrintElements = receiptElement.querySelectorAll('.no-print');
-    noPrintElements.forEach(el => { el.style.display = 'none'; });
-
-    await waitForReceiptImages(receiptElement);
-
-    const canvas = await html2canvas(receiptElement, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-    });
-
-    // Restore no-print elements
-    noPrintElements.forEach(el => { el.style.display = ''; });
-
-    const imgWidth = 210; // A4 width in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    // For emailed PDF use higher compression: export as JPEG with lower quality
-    const imgData = canvas.toDataURL('image/jpeg', 0.7);
-    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-
-    // Get base64 PDF (without data URI prefix) and send to server
-    const pdfDataUri = pdf.output('datauristring'); // data:application/pdf;base64,...
-    const pdfBase64 = pdfDataUri.includes(',') ? pdfDataUri.split(',')[1] : pdfDataUri;
-
-    // Make API request to send email with client-generated PDF
+    // Make API request to send email (backend will generate the PDF)
     const response = await fetch(`${apiBaseUrl}/payments/email-receipt`, {
       method: 'POST',
       headers: {
@@ -225,6 +233,7 @@ export const emailReceipt = async (email, receiptData) => {
           receiptNumber: receiptData.receiptNumber,
           paymentDate: receiptData.paymentDate,
           studentName: receiptData.studentName,
+          studentEmail: receiptData.studentEmail || email,
           courseName: receiptData.courseName,
           paymentMethod: receiptData.paymentMethod,
           amount: parseFloat(receiptData.amount),
@@ -235,7 +244,6 @@ export const emailReceipt = async (email, receiptData) => {
           chequeNumber: receiptData.chequeNumber || undefined,
           showWatermark: receiptData.showWatermark || false,
         },
-        pdfBase64: pdfBase64,
         paymentId: receiptData.paymentId || undefined,
       }),
     });
