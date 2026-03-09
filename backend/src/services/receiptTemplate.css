@@ -79,16 +79,6 @@ body {
   margin-left: 2px;
 }
 
-.receipt-total-fees-paid {
-  font-size: 13px;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 5px 0 8px 0;
-  padding: 5px 0;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
-}
-
 .receipt-approval {
   font-size: 12px;
   font-weight: bold;

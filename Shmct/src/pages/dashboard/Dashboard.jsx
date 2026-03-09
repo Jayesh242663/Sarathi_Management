@@ -36,6 +36,7 @@ import MeasuredResponsiveContainer from '../../components/ui/MeasuredResponsiveC
 import { useStudents } from '../../context/StudentContext';
 import { formatCurrency, formatDate, getInitials, getRelativeTime } from '../../utils/formatters';
 import { COURSES, PAYMENT_METHODS } from '../../utils/constants';
+import { isStudentDroppedOut } from '../../utils/studentStatus';
 import { getResponsiveChartConfig, formatChartLabel, getDynamicYAxisDomain, getDynamicXAxisConfig } from '../../utils/chartHelpers';
 import '../../components/layout/Navbar.css';
 import './Dashboard.css';
@@ -148,7 +149,7 @@ const Dashboard = () => {
     
     // Only count active students in fee status (exclude dropped-out)
     students
-      .filter((student) => student.status !== 'dropped')
+      .filter((student) => !isStudentDroppedOut(student.status))
       .forEach((student) => {
         const studentPayments = payments.filter((p) => p.studentId === student.id);
         const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -205,10 +206,10 @@ const Dashboard = () => {
     return activities.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8);
   }, [students, payments]);
 
-  // Students with pending fees (exclude dropped-out students)
+  // Students with pending fees
   const pendingFeeStudents = useMemo(() => {
     return students
-      .filter((student) => student.status !== 'dropped')
+      .filter((student) => !isStudentDroppedOut(student.status))
       .map((student) => {
         const studentPayments = payments.filter((p) => p.studentId === student.id);
         const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);

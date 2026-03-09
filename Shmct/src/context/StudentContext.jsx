@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { v4 as uuidv4 } from 'uuid';
 import { StudentService, PaymentService, PlacementInstallmentService, PlacementService } from '../services/apiService';
 import { getFromStorage, setToStorage, removeFromStorage, getCurrentAcademicBatch, STORAGE_KEYS } from '../utils/storage';
+import { isStudentDroppedOut } from '../utils/studentStatus';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -1148,8 +1149,15 @@ export const StudentProvider = ({ children }) => {
     const totalStudents = filteredStudents.length;
     const activeStudents = filteredStudents.filter((s) => s.status === 'active').length;
     
-    // Calculate revenue from student fee payments (includes all students)
+    // Calculate revenue from student fee payments
     const feeRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Active (non-dropped) students for pending-fees and collection calculations
+    const activeStudentsList = filteredStudents.filter((s) => !isStudentDroppedOut(s.status));
+    const activeStudentIds = new Set(activeStudentsList.map((s) => s.id));
+    const activeFeeRevenue = filteredPayments
+      .filter((p) => activeStudentIds.has(p.studentId))
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
     
     // Calculate revenue from placement installments
     const placementRevenue = filteredPlacements.reduce((sum, placement) => {
@@ -1163,10 +1171,9 @@ export const StudentProvider = ({ children }) => {
     const totalRevenue = feeRevenue + placementRevenue;
     
     // Calculate total fees only from active students (exclude dropped-out)
-    const totalFees = filteredStudents
-      .filter((s) => s.status !== 'dropped')
+    const totalFees = activeStudentsList
       .reduce((sum, s) => sum + Math.max(0, (s.totalFees || 0) - (s.discount || 0)), 0);
-    const pendingFees = totalFees - feeRevenue; // Only student fees affect pending fees
+    const pendingFees = Math.max(0, totalFees - activeFeeRevenue); // Exclude dropped-out students
 
     // Recent enrollments (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -1182,7 +1189,7 @@ export const StudentProvider = ({ children }) => {
       totalFees,
       pendingFees,
       recentEnrollments,
-      collectionRate: totalFees > 0 ? Math.round((feeRevenue / totalFees) * 100) : 0,
+      collectionRate: totalFees > 0 ? Math.round((activeFeeRevenue / totalFees) * 100) : 0,
     };
   }, [students, payments, placements, currentBatch]);
 

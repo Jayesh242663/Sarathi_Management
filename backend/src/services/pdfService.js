@@ -229,7 +229,6 @@ async function generateReceiptHTML(receiptData) {
         ${logoHTML}
         <div class="receipt-institution-info">
           <h1 class="receipt-institution-name">${institutionInfo.fullName}<sup>™</sup></h1>
-          ${receiptData.previouslyPaid > 0 ? `<div class="receipt-total-fees-paid">Total Fees Paid: ${formatAmount(amounts.previouslyPaid + amounts.receivedAmount)}/-</div>` : ''}
           <div class="receipt-approval">${institutionInfo.approvalText}</div>
           <div class="receipt-address">${institutionInfo.address}</div>
           <div class="receipt-contact">Phone : ${institutionInfo.phone}</div>
@@ -476,7 +475,7 @@ function getEmbeddedCSS() {
     .receipt-header { border-bottom: 3px solid #3e4095; padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
     .receipt-logo-placeholder { width: 80px; height: 80px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; flex-shrink: 0; }
     .receipt-institution-info { flex: 1; text-align: center; }
-    .receipt-institution-name { color: #3e4095; font-size: 18px; font-weight: bold; margin: 0 0 5px 0; }\n    .receipt-institution-name sup { font-size: 0.6em; margin-left: 2px; }\n    .receipt-total-fees-paid { font-size: 13px; font-weight: 600; color: #2d3748; margin: 5px 0 8px 0; padding: 5px 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+    .receipt-institution-name { color: #3e4095; font-size: 18px; font-weight: bold; margin: 0 0 5px 0; }\n    .receipt-institution-name sup { font-size: 0.6em; margin-left: 2px; }
     .receipt-approval { font-size: 12px; font-weight: bold; margin: 5px 0; }
     .receipt-address { font-size: 11px; margin: 5px 0; line-height: 1.4; }
     .receipt-contact { font-size: 11px; margin: 3px 0; }

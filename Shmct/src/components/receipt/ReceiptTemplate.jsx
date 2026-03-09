@@ -48,11 +48,6 @@ const ReceiptTemplate = ({ receiptData, showWatermark = false }) => {
             <h1 className="receipt-institution-name">
               {INSTITUTION_INFO.fullName}<sup>™</sup>
             </h1>
-            {amounts.previouslyPaid > 0 && (
-              <div className="receipt-total-fees-paid">
-                Total Fees Paid: {formatAmount(amounts.previouslyPaid + amounts.receivedAmount)}/-
-              </div>
-            )}
             <div className="receipt-approval">{INSTITUTION_INFO.approvalText}</div>
             <div className="receipt-address">{INSTITUTION_INFO.address}</div>
             <div className="receipt-contact">Phone : {INSTITUTION_INFO.phone}</div>

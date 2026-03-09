@@ -22,6 +22,7 @@ import { useStudents } from '../../context/StudentContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDate, getInitials, getRelativeTime } from '../../utils/formatters';
 import { PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
+import { isStudentDroppedOut } from '../../utils/studentStatus';
 import PaymentForm from './PaymentForm';
 import './FeesPage.css';
 
@@ -55,7 +56,7 @@ const FeesPage = () => {
   // Filter students
   const filteredStudents = useMemo(() => {
     return studentsWithFees
-      .filter((student) => student.status !== 'dropped')
+      .filter((student) => !isStudentDroppedOut(student.status))
       .filter((student) => {
         const matchesSearch = 
           student.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -97,7 +98,7 @@ const FeesPage = () => {
     
     // Calculate remaining fees from dropped-out students (loss)
     const droppedOutLoss = students
-      .filter((s) => s.status === 'dropped')
+      .filter((s) => isStudentDroppedOut(s.status))
       .reduce((sum, s) => {
         const netFees = (s.totalFees || 0) - (s.discount || 0);
         const studentPayments = payments.filter((p) => p.studentId === s.id);
