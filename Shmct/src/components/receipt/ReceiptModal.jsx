@@ -22,6 +22,9 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
   const { user } = useAuth();
   const isAuditor = user?.role === 'auditor';
 
+  // Auditors always see the watermark (forced on, no toggle)
+  const effectiveWatermark = isAuditor ? true : showWatermark;
+
   // ── Chrome PDF-viewer style scaling ──────────────────────────
   // The entire receipt is always visible, centred, never scrollable.
   const receiptLeftRef = useRef(null);
@@ -62,7 +65,7 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
     if (receiptInnerRef.current) ro.observe(receiptInnerRef.current);
 
     return () => { clearTimeout(timer); ro.disconnect(); };
-  }, [receiptData, showWatermark]);
+  }, [receiptData, effectiveWatermark]);
   // ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -96,7 +99,7 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
     setEmailError('');
     setIsEmailing(true);
     try {
-      const result = await emailReceipt(emailAddress, { ...receiptData, showWatermark });
+      const result = await emailReceipt(emailAddress, { ...receiptData, showWatermark: effectiveWatermark });
       setEmailSent(true);
       // Update local payment state immediately if paymentId returned
       const paymentId = result.paymentId || receiptData.paymentId || null;
@@ -136,7 +139,7 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
                     transformOrigin: 'top left',
                   }}
                 >
-                  <ReceiptTemplate receiptData={receiptData} showWatermark={showWatermark} />
+                  <ReceiptTemplate receiptData={receiptData} showWatermark={effectiveWatermark} />
                 </div>
               </div>
             </div>
@@ -160,18 +163,20 @@ const ReceiptModal = ({ receiptData, onClose, studentEmail }) => {
                 </div>
               </div>
 
-              <div className="sidebar-section">
-                <div className="sidebar-control sidebar-control-full">
-                  <label className="sidebar-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={showWatermark}
-                      onChange={(e) => setShowWatermark(e.target.checked)}
-                    />
-                    <span>Show watermark</span>
-                  </label>
+              {!isAuditor && (
+                <div className="sidebar-section">
+                  <div className="sidebar-control sidebar-control-full">
+                    <label className="sidebar-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={showWatermark}
+                        onChange={(e) => setShowWatermark(e.target.checked)}
+                      />
+                      <span>Show watermark</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {!isAuditor && (
                 <div className="sidebar-section sidebar-section-stacked">
