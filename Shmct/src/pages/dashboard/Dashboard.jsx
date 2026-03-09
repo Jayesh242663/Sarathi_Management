@@ -205,9 +205,10 @@ const Dashboard = () => {
     return activities.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8);
   }, [students, payments]);
 
-  // Students with pending fees
+  // Students with pending fees (exclude dropped-out students)
   const pendingFeeStudents = useMemo(() => {
     return students
+      .filter((student) => student.status !== 'dropped')
       .map((student) => {
         const studentPayments = payments.filter((p) => p.studentId === student.id);
         const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
