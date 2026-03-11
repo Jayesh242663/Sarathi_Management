@@ -4,9 +4,11 @@ import tempfile
 import gzip
 import shutil
 import logging
+import uuid
 from datetime import datetime, timezone
 from google.cloud import storage
 from flask import Flask, jsonify
+from flask import request
 from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
@@ -28,6 +30,30 @@ def _safe_blob_name(prefix, name):
     return f"{prefix.rstrip('/')}/{name.lstrip('/')}"
 
 
+def _resolve_compress_setting():
+    """Resolve compression toggle with backward compatibility.
+
+    Preferred env var is BACKUP_COMPRESS. COMPRESS is supported as legacy.
+    """
+    if "BACKUP_COMPRESS" in os.environ:
+        return _env_bool("BACKUP_COMPRESS", True)
+    if "COMPRESS" in os.environ:
+        return _env_bool("COMPRESS", True)
+    return True
+
+
+def _require_backup_token_if_configured():
+    """Protect /backup endpoint when BACKUP_API_KEY is configured."""
+    expected = os.environ.get("BACKUP_API_KEY")
+    if not expected:
+        return None
+
+    provided = request.headers.get("X-Backup-Token")
+    if provided != expected:
+        return jsonify({"error": "Unauthorized"}), 401
+    return None
+
+
 def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
     """Create a PostgreSQL dump and upload it to GCS.
 
@@ -46,9 +72,12 @@ def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
 
     _validate_env(db_url, bucket_name)
 
-    # Use timezone-aware UTC datetime
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    base_name = f"backup-{timestamp}.sql"
+    # Include milliseconds + short UUID to avoid collisions even for same-second runs.
+    now_utc = datetime.now(timezone.utc)
+    timestamp = now_utc.strftime("%Y%m%d-%H%M%S")
+    ms = int(now_utc.microsecond / 1000)
+    unique_suffix = uuid.uuid4().hex[:8]
+    base_name = f"backup-{timestamp}-{ms:03d}-{unique_suffix}.sql"
     upload_name = base_name + (".gz" if compress else "")
 
     # Create a temporary file for the dump
@@ -62,11 +91,14 @@ def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
         # Use --dbname to accept a full DATABASE_URL/URI
         cmd = [pg_dump_cmd, "--dbname", db_url, "-f", tmp_sql.name]
         try:
-            subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=600)
         except FileNotFoundError as fnf:
             logging.error("pg_dump executable not found: %s", pg_dump_cmd)
             logging.error("On Windows install PostgreSQL client or set PG_DUMP_PATH to the pg_dump executable path.")
             raise RuntimeError(f"pg_dump not found: {pg_dump_cmd}") from fnf
+        except subprocess.TimeoutExpired as te:
+            logging.error("pg_dump timed out after %s seconds", te.timeout)
+            raise RuntimeError("pg_dump timed out") from te
 
         upload_path = tmp_sql.name
         if compress:
@@ -92,6 +124,9 @@ def backup_db(db_url=None, bucket_name=None, backup_prefix=None, compress=True):
         return {"bucket": bucket_name, "blob": blob_name, "size": size}
 
     except subprocess.CalledProcessError as e:
+        stderr = (e.stderr or "").strip()
+        if stderr:
+            logging.error("pg_dump stderr: %s", stderr)
         logging.exception("pg_dump failed: %s", e)
         raise
     finally:
@@ -121,7 +156,7 @@ def main():
     db_url = os.environ.get("DATABASE_URL")
     bucket = os.environ.get("BUCKET_NAME")
     prefix = os.environ.get("BACKUP_PREFIX")
-    compress = _env_bool("BACKUP_COMPRESS", True)
+    compress = _resolve_compress_setting()
 
     try:
         result = backup_db(db_url=db_url, bucket_name=bucket, backup_prefix=prefix, compress=compress)
@@ -140,9 +175,16 @@ def create_app():
 
     @app.route("/backup", methods=["POST", "GET"])
     def trigger_backup():
+        auth_error = _require_backup_token_if_configured()
+        if auth_error:
+            return auth_error
+
         # Trigger a backup using environment variables only.
         try:
-            result = backup_db()
+            started_at = datetime.now(timezone.utc)
+            result = backup_db(compress=_resolve_compress_setting())
+            duration_seconds = (datetime.now(timezone.utc) - started_at).total_seconds()
+            result["duration_seconds"] = round(duration_seconds, 3)
             return jsonify(result), 200
         except Exception as e:
             logging.exception("Backup failed via HTTP: %s", e)
