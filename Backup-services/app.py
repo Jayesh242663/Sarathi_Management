@@ -173,7 +173,7 @@ def create_app():
     def health():
         return "ok", 200
 
-    @app.route("/backup", methods=["POST", "GET"])
+    @app.route("/backup", methods=["POST", "GET"], strict_slashes=False)
     def trigger_backup():
         auth_error = _require_backup_token_if_configured()
         if auth_error:
