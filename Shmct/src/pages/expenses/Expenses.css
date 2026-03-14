@@ -1001,9 +1001,9 @@
   bottom: 0;
   width: 100%;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: #000000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1015,10 +1015,10 @@
 }
 
 .expense-modal-wide {
-  background: rgba(30, 30, 35, 0.98);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b0b0b;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #1f2937;
   border-radius: 20px;
   padding: 0;
   width: 90%;
@@ -1026,7 +1026,7 @@
   max-height: 90vh;
   overflow-y: auto;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   position: relative;
 }
 
@@ -1036,8 +1036,8 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1 0%, #22c55e 100%);
 }
 
 .expense-modal-header {
@@ -1045,8 +1045,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #111111;
+  border-bottom: 1px solid #1f2937;
   margin-top: 4px;
 }
 
@@ -1120,26 +1120,29 @@
 
 /* Form Section */
 .expense-form-section {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #121212;
+  border: 1px solid #242424;
   border-radius: 14px;
   padding: 1.5rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .expense-form-section:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: #334155;
+  background: #161616;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .expense-section-title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: #ffffff;
   margin: 0 0 1rem 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .expense-section-title svg {
@@ -1176,9 +1179,11 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .expense-form-label svg {
@@ -1188,27 +1193,27 @@
 
 .expense-form-input,
 .expense-form-textarea {
-  padding: 0.875rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 12px;
+  background: #0f0f0f;
+  border: 1.5px solid #2a2a2a;
   color: #ffffff;
   border-radius: 10px;
-  font-size: 0.9375rem;
+  font-size: 14px;
   font-family: inherit;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .expense-form-input::placeholder,
 .expense-form-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: #6b7280;
 }
 
 .expense-form-input:focus,
 .expense-form-textarea:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(34, 197, 94, 0.4);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  background: #0f0f0f;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .expense-form-input.error,
@@ -1221,6 +1226,93 @@
 .expense-form-textarea.error:focus {
   border-color: #f87171;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.expense-bank-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 50px;
+  border-radius: 10px;
+  background: #0f0f0f;
+  border: 1.5px solid #2a2a2a;
+  overflow: hidden;
+}
+
+.expense-bank-select-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 42px 0 12px;
+  pointer-events: none;
+}
+
+.expense-bank-logo-shell {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: #1a1a1a;
+  border: 1px solid #374151;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.expense-bank-logo {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.expense-bank-select-name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.expense-bank-select-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(255, 255, 255, 0.72);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.72);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+.expense-bank-select-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  background: transparent;
+  border: 0;
+  color: transparent;
+  padding: 0 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+}
+
+.expense-bank-select-wrapper:hover {
+  background: #151515;
+  border-color: #374151;
+}
+
+.expense-bank-select-wrapper:focus-within {
+  background: #151515;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .expense-form-textarea {
@@ -1252,15 +1344,15 @@
   cursor: pointer;
   user-select: none;
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111111;
+  border: 1px solid #2a2a2a;
   border-radius: 10px;
   transition: all 0.2s ease;
 }
 
 .expense-checkbox-label-new:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: #171717;
+  border-color: #374151;
 }
 
 .expense-checkbox-new {
@@ -1278,9 +1370,9 @@
 }
 
 .expense-type-button {
-  padding: 0.875rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 1rem;
+  background: #0f0f0f;
+  border: 1.5px solid #2a2a2a;
   color: rgba(255, 255, 255, 0.65);
   border-radius: 10px;
   cursor: pointer;
@@ -1292,8 +1384,8 @@
 }
 
 .expense-type-button:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: #151515;
+  border-color: #374151;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -1342,14 +1434,14 @@
 }
 
 .expense-btn-cancel-wide {
-  background: rgba(255, 255, 255, 0.06);
+  background: #111111;
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1.5px solid #2a2a2a;
 }
 
 .expense-btn-cancel-wide:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #171717;
+  border-color: #374151;
   transform: translateY(-1px);
 }
 

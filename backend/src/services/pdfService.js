@@ -98,10 +98,19 @@ function getPaymentMethodLabel(method) {
 
 function getCourseIndex(courseName) {
   if (!courseName) return 5;
-  const n = String(courseName).toLowerCase();
-  if (n.includes('bsc') && n.includes('hotel')) return 1;
+  const n = String(courseName)
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (n.includes('international diploma hotel management')) return 3;
   if (n.includes('international') && n.includes('diploma')) return 3;
+  if (n === 'idhm 001' || n === 'idhm001' || n.includes('idhm')) return 3;
+
+  if (n.includes('bsc') && n.includes('hotel')) return 1;
   if (n.includes('diploma') && n.includes('hotel')) return 2;
+  if (n === 'dhm 001' || n === 'dhm001' || n.includes('diploma hotel management')) return 2;
   if (n.includes('certificate')) return 4;
   return 5;
 }

@@ -1505,6 +1505,93 @@
   min-width: auto;
 }
 
+.bank-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.bank-select-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 42px 0 12px;
+  pointer-events: none;
+}
+
+.bank-select-logo-shell {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bank-select-logo {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.bank-select-wrapper .bank-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  background: transparent;
+  border: 0;
+  color: transparent;
+  cursor: pointer;
+  padding: 0 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.bank-select-name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.bank-select-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(255, 255, 255, 0.72);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.72);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+.bank-select-wrapper:hover {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.bank-select-wrapper:focus-within {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
 .add-installment input:hover,
 .add-installment select:hover,
 .add-installment textarea:hover {

@@ -6,6 +6,8 @@ import { formatCurrency, formatDate, getInitials, formatNumberWithCommas } from 
 import { COURSES } from '../../utils/constants';
 import { COUNTRIES, getCountryData, getCountryCode } from '../../utils/countries';
 import { PlacementService } from '../../services/apiService';
+import hdfcBankLogo from '../../assets/hdfc-bank-logo.png';
+import indiaOverseasBankLogo from '../../assets/india-overseas-bank-logo.png';
 import './PlacementsPage.css';
 
 const PlacementsPage = () => {
@@ -33,16 +35,72 @@ const PlacementsPage = () => {
     return raw ? formatNumberWithCommas(raw) : '';
   };
 
-  const PLACEMENT_BANKS = [{ value: 'tgsb', label: 'TGSB' }];
+  const hdfcAccountLastFourRaw =
+    import.meta.env.VITE_SARATHI_HDFC_BANK_ACCOUNT_NUMBER_LAST_FOUR ||
+    import.meta.env.VITE_HDFC_BANK_ACCOUNT_NUMBER_LAST_FOUR ||
+    '8512';
+  const hdfcAccountLastFour = hdfcAccountLastFourRaw.toString().slice(-4).padStart(4, '0');
+  const hdfcBankLabel = `HDFC (A/C ••••${hdfcAccountLastFour})`;
+  const hdfc1BankLabel = 'HDFC-1 (A/C ••••0781)';
+  const indiaOverseasBankLabel = 'India Overseas (A/C ••••0377)';
+
+  const placementBankMetaMap = {
+    hdfc: { label: hdfcBankLabel, logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    tgsb: { label: hdfcBankLabel, logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    hdfc_1_shmt: { label: hdfc1BankLabel, logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    hdfc_sss: { label: 'HDFC (SSS)', logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    india_overseas: { label: indiaOverseasBankLabel, logo: indiaOverseasBankLogo, logoAlt: 'India Overseas Bank logo' },
+  };
+
+  const PLACEMENT_BANKS = [{ value: 'hdfc', label: hdfcBankLabel }];
+  const getPlacementBankMeta = (value) => {
+    if (placementBankMetaMap[value]) return placementBankMetaMap[value];
+
+    return {
+      label: getPlacementBankLabel(value),
+      logo: hdfcBankLogo,
+      logoAlt: 'Bank logo',
+    };
+  };
   const getPlacementBankLabel = (value) => {
     const label = PLACEMENT_BANKS.find((b) => b.value === value)?.label;
     if (label) return label;
     const legacy = {
-      hdfc_1_shmt: 'HDFC-1 (SHMT)',
-      india_overseas: 'India Overseas',
+      tgsb: hdfcBankLabel,
+      hdfc_1_shmt: hdfc1BankLabel,
+      india_overseas: indiaOverseasBankLabel,
       hdfc_sss: 'HDFC (SSS)',
     };
     return legacy[value] || 'N/A';
+  };
+
+  const renderBankSelect = (value, onChange) => {
+    const selectedBank = getPlacementBankMeta(value);
+
+    return (
+      <div className="bank-select-wrapper">
+        <div className="bank-select-display" aria-hidden="true">
+          {selectedBank.logo && (
+            <span className="bank-select-logo-shell">
+              <img src={selectedBank.logo} alt={selectedBank.logoAlt} className="bank-select-logo" />
+            </span>
+          )}
+          <span className="bank-select-name">{selectedBank.label}</span>
+        </div>
+        <select
+          value={value}
+          onChange={onChange}
+          className="bank-select"
+          aria-label="Bank Account"
+        >
+          {PLACEMENT_BANKS.map((bank) => (
+            <option key={bank.value} value={bank.value}>
+              {bank.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
   };
 
   // Get unique countries for filter
@@ -206,7 +264,7 @@ const PlacementsPage = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const getForm = (placementId) => formState[placementId] || { amount: '', date: '', method: 'cash', bankMoneyReceived: 'tgsb', chequeNumber: '', remarks: '' };
+  const getForm = (placementId) => formState[placementId] || { amount: '', date: '', method: 'cash', bankMoneyReceived: 'hdfc', chequeNumber: '', remarks: '' };
 
   const updateForm = (placementId, key, value) => {
     setFormState((prev) => ({
@@ -274,7 +332,7 @@ const PlacementsPage = () => {
         amount: amountValue,
         date: currentForm.date || new Date().toISOString(),
         method: currentForm.method || 'cash',
-        bankMoneyReceived: currentForm.bankMoneyReceived || 'tgsb',
+        bankMoneyReceived: currentForm.bankMoneyReceived || 'hdfc',
         chequeNumber: currentForm.chequeNumber || null,
         country: currentForm.country || '', // Will be set in costs step
         remarks: currentForm.remarks || '',
@@ -287,7 +345,7 @@ const PlacementsPage = () => {
           amount: '', 
           date: '', 
           method: 'cash', 
-          bankMoneyReceived: 'tgsb', 
+          bankMoneyReceived: 'hdfc', 
           chequeNumber: '',
           country: '', 
           remarks: '' 
@@ -342,7 +400,7 @@ const PlacementsPage = () => {
       amount: installment.amount ?? '',
       date: installment.date ? installment.date.toString().split('T')[0] : '',
       method: installment.method || 'cash',
-      bankMoneyReceived: installment.bankMoneyReceived || 'tgsb',
+      bankMoneyReceived: installment.bankMoneyReceived || 'hdfc',
       chequeNumber: installment.chequeNumber || '',
       remarks: installment.remarks || '',
       country: placement.country || '',
@@ -892,17 +950,10 @@ const PlacementsPage = () => {
                                           <Building2 size={16} />
                                           Bank Account
                                         </label>
-                                        <select
-                                          value={getForm(placement.id).bankMoneyReceived}
-                                          onChange={(e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)}
-                                          className="bank-select"
-                                        >
-                                          {PLACEMENT_BANKS.map((bank) => (
-                                            <option key={bank.value} value={bank.value}>
-                                              {bank.label}
-                                            </option>
-                                          ))}
-                                        </select>
+                                        {renderBankSelect(
+                                          getForm(placement.id).bankMoneyReceived,
+                                          (e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)
+                                        )}
                                       </div>
                                     )}
                                     {getForm(placement.id).method === 'cheque' && (
@@ -1030,17 +1081,10 @@ const PlacementsPage = () => {
                                           <Building2 size={16} />
                                           Bank Account
                                         </label>
-                                        <select
-                                          value={getForm(placement.id).bankMoneyReceived}
-                                          onChange={(e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)}
-                                          className="bank-select"
-                                        >
-                                          {PLACEMENT_BANKS.map((bank) => (
-                                            <option key={bank.value} value={bank.value}>
-                                              {bank.label}
-                                            </option>
-                                          ))}
-                                        </select>
+                                        {renderBankSelect(
+                                          getForm(placement.id).bankMoneyReceived,
+                                          (e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)
+                                        )}
                                       </div>
                                     )}
                                     {getForm(placement.id).method === 'cheque' && (
@@ -1332,17 +1376,10 @@ const PlacementsPage = () => {
                                 <Building2 size={16} />
                                 Bank Account
                               </label>
-                              <select
-                                value={getForm(placement.id).bankMoneyReceived}
-                                onChange={(e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)}
-                                className="bank-select"
-                              >
-                                {PLACEMENT_BANKS.map((bank) => (
-                                  <option key={bank.value} value={bank.value}>
-                                    {bank.label}
-                                  </option>
-                                ))}
-                              </select>
+                              {renderBankSelect(
+                                getForm(placement.id).bankMoneyReceived,
+                                (e) => updateForm(placement.id, 'bankMoneyReceived', e.target.value)
+                              )}
                             </div>
                           )}
                           {getForm(placement.id).method === 'cheque' && (
@@ -1511,17 +1548,10 @@ const PlacementsPage = () => {
                       <Building2 size={16} />
                       Bank Account
                     </label>
-                    <select
-                      value={installmentEditForm?.bankMoneyReceived ?? 'tgsb'}
-                      onChange={(e) => updateInstallmentForm('bankMoneyReceived', e.target.value)}
-                      className="bank-select"
-                    >
-                      {PLACEMENT_BANKS.map((bank) => (
-                        <option key={bank.value} value={bank.value}>
-                          {bank.label}
-                        </option>
-                      ))}
-                    </select>
+                    {renderBankSelect(
+                      installmentEditForm?.bankMoneyReceived ?? 'hdfc',
+                      (e) => updateInstallmentForm('bankMoneyReceived', e.target.value)
+                    )}
                   </div>
                 )}
                 {installmentEditForm?.method === 'cheque' && (

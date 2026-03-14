@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatReceiptDate } from '../utils/receiptHelpers';
+import { COURSES } from '../utils/constants';
 
 const waitForReceiptImages = async (rootElement, timeoutMs = 3000) => {
   const images = Array.from(rootElement.querySelectorAll('img'));
@@ -160,11 +161,22 @@ export const generateReceiptData = (paymentData, studentData) => {
     ? `${studentData.first_name} ${studentData.last_name}`
     : studentData.name || 'N/A';
 
-  const courseName = studentData.course 
-    ? studentData.course
-    : studentData.courseName 
-    ? studentData.courseName
-    : studentData.course_name || 'Diploma in Hotel Management';
+  const rawCourseValue =
+    studentData.course ||
+    studentData.courseType ||
+    studentData.course_type ||
+    studentData.courseCode ||
+    studentData.course_code ||
+    '';
+
+  const mappedCourseLabel = COURSES.find((c) => c.value === rawCourseValue)?.label;
+
+  const courseName =
+    studentData.courseName ||
+    studentData.course_name ||
+    mappedCourseLabel ||
+    rawCourseValue ||
+    'Diploma in Hotel Management';
 
   const totalFees = studentData.totalFees 
     ? parseFloat(studentData.totalFees)

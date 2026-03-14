@@ -178,11 +178,19 @@ export const getPaymentMethodLabel = (method) => {
 export const getCourseCheckboxIndex = (courseName) => {
   if (!courseName) return 5;
 
-  const normalized = String(courseName).toLowerCase();
+  const normalized = String(courseName)
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (normalized.includes('international diploma hotel management')) return 3;
+  if (normalized.includes('international') && normalized.includes('diploma')) return 3;
+  if (normalized === 'idhm 001' || normalized === 'idhm001' || normalized.includes('idhm')) return 3;
 
   if (normalized.includes('bsc') && normalized.includes('hotel')) return 1;
-  if (normalized.includes('international') && normalized.includes('diploma')) return 3;
   if (normalized.includes('diploma') && normalized.includes('hotel')) return 2;
+  if (normalized === 'dhm 001' || normalized === 'dhm001' || normalized.includes('diploma hotel management')) return 2;
   if (normalized.includes('certificate')) return 4;
 
   return 5; // Default to "Others"

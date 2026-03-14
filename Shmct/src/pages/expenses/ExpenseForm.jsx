@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,6 +6,8 @@ import { Calendar, CreditCard, IndianRupee, User, DollarSign, FileText, Save, X,
 import { useStudents } from '../../context/StudentContext';
 import { PAYMENT_METHODS, BANK_MONEY_RECEIVED } from '../../utils/constants';
 import { formatNumberWithCommas } from '../../utils/formatters';
+import hdfcBankLogo from '../../assets/hdfc-bank-logo.png';
+import indiaOverseasBankLogo from '../../assets/india-overseas-bank-logo.png';
 import './Expenses.css';
 
 const SELF_TRANSACTION_NAMES = [
@@ -73,6 +75,54 @@ const ExpenseForm = ({ onClose, expense, onSubmitSuccess }) => {
   const amountValue = watch('amount');
   const paymentMethod = watch('paymentMethod');
   const isSelfTransaction = watch('isSelfTransaction');
+  const bankMoneyReceived = watch('bankMoneyReceived');
+
+  const hdfcAccountLastFourRaw =
+    import.meta.env.VITE_SARATHI_HDFC_BANK_ACCOUNT_NUMBER_LAST_FOUR ||
+    import.meta.env.VITE_HDFC_BANK_ACCOUNT_NUMBER_LAST_FOUR ||
+    '8512';
+  const hdfcAccountLastFour = hdfcAccountLastFourRaw.toString().slice(-4).padStart(4, '0');
+  const hdfcBankLabel = `HDFC (A/C ••••${hdfcAccountLastFour})`;
+  const hdfc1BankLabel = 'HDFC-1 (A/C ••••0781)';
+  const indiaOverseasBankLabel = 'India Overseas (A/C ••••0377)';
+
+  const bankLogoMap = {
+    hdfc: { logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    hdfc_1_shmt: { logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    hdfc_sss: { logo: hdfcBankLogo, logoAlt: 'HDFC Bank logo' },
+    india_overseas: { logo: indiaOverseasBankLogo, logoAlt: 'India Overseas Bank logo' },
+  };
+
+  const expenseBankOptions = [
+    {
+      value: 'hdfc',
+      label: hdfcBankLabel,
+      logo: bankLogoMap.hdfc.logo,
+      logoAlt: bankLogoMap.hdfc.logoAlt,
+    },
+    ...BANK_MONEY_RECEIVED
+      .filter((bank) => bank.value !== 'tgsb')
+      .map((bank) => ({
+        ...bank,
+        label:
+          bank.value === 'hdfc_1_shmt'
+            ? hdfc1BankLabel
+            : bank.value === 'india_overseas'
+            ? indiaOverseasBankLabel
+            : bank.label,
+        logo: bankLogoMap[bank.value]?.logo || hdfcBankLogo,
+        logoAlt: bankLogoMap[bank.value]?.logoAlt || 'Bank logo',
+      })),
+  ];
+
+  const selectedBankOption = expenseBankOptions.find((bank) => bank.value === bankMoneyReceived);
+
+  useEffect(() => {
+    // Migrate legacy TGSB value to HDFC in the form UI.
+    if (bankMoneyReceived === 'tgsb') {
+      setValue('bankMoneyReceived', 'hdfc', { shouldDirty: true });
+    }
+  }, [bankMoneyReceived, setValue]);
 
   const formattedAmountPreview = (() => {
     const raw = (amountValue ?? '').toString().replace(/,/g, '').trim();
@@ -334,17 +384,30 @@ const ExpenseForm = ({ onClose, expense, onSubmitSuccess }) => {
               {['bank_transfer', 'upi', 'card'].includes(paymentMethod) && (
                 <div className="expense-form-field">
                   <label className="expense-form-label">Bank / Account</label>
-                  <select
-                    {...register('bankMoneyReceived')}
-                    className="expense-form-input"
-                  >
-                    <option value="">Select Bank (Optional)</option>
-                    {BANK_MONEY_RECEIVED.map((bank) => (
-                      <option key={bank.value} value={bank.value}>
-                        {bank.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="expense-bank-select-wrapper">
+                    <div className="expense-bank-select-display" aria-hidden="true">
+                      {selectedBankOption?.logo && (
+                        <span className="expense-bank-logo-shell">
+                          <img src={selectedBankOption.logo} alt={selectedBankOption.logoAlt} className="expense-bank-logo" />
+                        </span>
+                      )}
+                      <span className="expense-bank-select-name">
+                        {selectedBankOption?.label || 'Select Bank (Optional)'}
+                      </span>
+                    </div>
+                    <select
+                      {...register('bankMoneyReceived')}
+                      className="expense-bank-select-native"
+                      aria-label="Bank / Account"
+                    >
+                      <option value="">Select Bank (Optional)</option>
+                      {expenseBankOptions.map((bank) => (
+                        <option key={bank.value} value={bank.value}>
+                          {bank.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
 
